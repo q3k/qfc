@@ -1,0 +1,47 @@
+package(
+    default_visibility = ["//visibility:public"],
+)
+
+constraint_setting(name = "fpga_family")
+
+constraint_value(
+    name = "ecp5",
+    constraint_setting = ":fpga_family",
+)
+
+constraint_value(
+    name = "ice40",
+    constraint_setting = ":fpga_family",
+)
+
+constraint_setting(name = "ecp5_device_type")
+
+constraint_value(
+    name = "LFE5U_12F",
+    constraint_setting = ":ecp5_device_type",
+)
+
+constraint_setting(name = "ecp5_package")
+
+constraint_value(
+    name = "CABGA381",
+    constraint_setting = ":ecp5_package",
+)
+
+constraint_setting(name = "board")
+
+constraint_value(
+    name = "ulx3s",
+    constraint_setting = ":board",
+)
+
+platform(
+    name = "ulx3s_12f",
+    constraint_values = [
+        "@platforms//os:none",
+        ":ecp5",
+        ":LFE5U_12F",
+        ":CABGA381",
+        ":ulx3s",
+    ],
+)

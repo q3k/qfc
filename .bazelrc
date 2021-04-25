@@ -1,0 +1,1 @@
+build --platforms=//build/platforms:ulx3s_12f
