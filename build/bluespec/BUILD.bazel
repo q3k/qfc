@@ -3,3 +3,10 @@ toolchain_type(
     visibility = ["//visibility:public"],
 )
 
+cc_binary(
+    name = "bscwrap",
+    srcs = [
+        "bscwrap.cc",
+    ],
+    visibility = [ "//visibility:public" ],
+)

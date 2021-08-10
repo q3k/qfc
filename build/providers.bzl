@@ -19,8 +19,9 @@ YosysFlowInfo = provider(
 # Bluespec intermediary compilation data.
 BluespecInfo = provider(
     fields = [
-        "partial_objects",
+        "sim_objects",
         "verilog_objects",
+        "sim_outputs",
     ],
 )
 

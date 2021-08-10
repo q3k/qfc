@@ -7,7 +7,7 @@ def _external_binary_tool_impl(ctx):
     path = path[len(strip):]
     ctx.actions.write(
         output = executable,
-        content = """#!/usr/bin/env sh
+        content = """#!/bin/sh
             sp="{}"
             bin=$0.runfiles/$sp
             exec $bin $@

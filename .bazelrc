@@ -1,1 +1,3 @@
 build --platforms=//build/platforms:ulx3s_12f
+build --experimental_allow_unresolved_symlinks
+build --host_cxxopt='-std=c++17'

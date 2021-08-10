@@ -1,4 +1,5 @@
 load("//build:providers.bzl", "BscInfo", "VerilogInfo", "BluespecInfo")
+load("@rules_cc//cc:toolchain_utils.bzl", "find_cpp_toolchain")
 
 def _bluespec_toolchain_impl(ctx):
     toolchain_info = platform_common.ToolchainInfo(
@@ -24,7 +25,7 @@ bluespec_toolchain = rule(
     },
 )
 
-def _compile(ctx, src, dep_objs, output, verilog=False, verilog_outputs=[]):
+def _compile(ctx, src, dep_objs, output, mode, verilog_outputs=[], sim_outputs=[]):
     info = ctx.toolchains["//build/bluespec:toolchain_type"].bscinfo
     bsc = info.bsc[DefaultInfo].files_to_run
 
@@ -39,8 +40,9 @@ def _compile(ctx, src, dep_objs, output, verilog=False, verilog_outputs=[]):
         "-p", ":".join(pkg_path),
         "-q",
     ]
-    mnemonic = "BluespecPartialCompile"
-    if verilog:
+
+    mnemonic = ""
+    if mode == "verilog":
         mnemonic = "BluespecVerilogCompile"
         vdir = bdir
         if len(verilog_outputs) > 0:
@@ -49,6 +51,15 @@ def _compile(ctx, src, dep_objs, output, verilog=False, verilog_outputs=[]):
             "-verilog",
             "-vdir", vdir,
         ]
+    elif mode == "sim":
+        mnemonic = "BluespecSimCompile"
+        simdir = bdir
+        arguments += [
+            "-sim",
+        ]
+    else:
+        fail("Invalid mode {}".format(mode))
+
     arguments += [
         src.path,
     ]
@@ -58,19 +69,20 @@ def _compile(ctx, src, dep_objs, output, verilog=False, verilog_outputs=[]):
         executable = bsc,
         arguments = arguments,
         inputs = depset([ src ], transitive=[dep_objs]),
-        outputs = verilog_outputs + [ output ],
+        outputs = sim_outputs + verilog_outputs + [ output ],
     )
-            
 
-def _bluespec_library_impl(ctx):
+
+def _library_inner(ctx):
     info = ctx.toolchains["//build/bluespec:toolchain_type"].bscinfo
     bsc = info.bsc[DefaultInfo].files_to_run
 
     package_order = []
     package_to_src = {}
-    package_to_partial_obj = {}
+    package_to_sim_obj = {}
     package_to_verilog_obj = {}
     package_to_verilog_modules = {}
+    package_to_sim_modules = {}
 
     for src in ctx.files.srcs:
         basename = src.basename
@@ -80,9 +92,9 @@ def _bluespec_library_impl(ctx):
 
         package_order.append(package)
         package_to_src[package] = src
-        partial_obj_name = "{}.partial/{}.bo".format(ctx.attr.name, package)
+        sim_obj_name = "{}.sim/{}.bo".format(ctx.attr.name, package)
         verilog_obj_name = "{}.verilog/{}.bo".format(ctx.attr.name, package)
-        package_to_partial_obj[package] = ctx.actions.declare_file(partial_obj_name)
+        package_to_sim_obj[package] = ctx.actions.declare_file(sim_obj_name)
         package_to_verilog_obj[package] = ctx.actions.declare_file(verilog_obj_name)
 
 
@@ -90,14 +102,18 @@ def _bluespec_library_impl(ctx):
         if package not in package_to_src:
             fail("Package {} (in synthesize) does not exist in srcs".format(package))
         package_to_verilog_modules[package] = []
+        package_to_sim_modules[package] = []
         for module in modules:
             verilog_name = "{}/{}.v".format(package, module)
             verilog = ctx.actions.declare_file(verilog_name)
             package_to_verilog_modules[package].append(verilog)
+            sim_name = "{}.sim/{}.ba".format(ctx.attr.name, module)
+            sim = ctx.actions.declare_file(sim_name)
+            package_to_sim_modules[package].append(sim)
 
 
-    input_partial_objects = depset(direct=[], transitive=[
-        dep[BluespecInfo].partial_objects
+    input_sim_objects = depset(direct=[], transitive=[
+        dep[BluespecInfo].sim_objects
         for dep in ctx.attr.deps
     ])
     input_verilog_objects = depset(direct=[], transitive=[
@@ -105,63 +121,92 @@ def _bluespec_library_impl(ctx):
         for dep in ctx.attr.deps
     ])
 
-    cur_partial_objs = input_partial_objects
+    cur_sim_objs = input_sim_objects
     cur_verilog_objs = input_verilog_objects
 
     for package in package_order:
         src = package_to_src[package]
-        partial_obj = package_to_partial_obj[package]
+        sim_obj = package_to_sim_obj[package]
         verilog_obj = package_to_verilog_obj[package]
-        modules = package_to_verilog_modules.get(package, [])
+        verilog_modules = package_to_verilog_modules.get(package, [])
+        sim_modules = package_to_sim_modules.get(package, [])
 
         _compile(
             ctx = ctx,
             src = src,
-            dep_objs = cur_partial_objs,
-            output = partial_obj,
-            verilog = False,
+            dep_objs = cur_sim_objs,
+            output = sim_obj,
+            mode = 'sim',
+            sim_outputs = sim_modules,
         )
         _compile(
             ctx = ctx,
             src = src,
             dep_objs = cur_verilog_objs,
             output = verilog_obj,
-            verilog = True,
-            verilog_outputs = modules,
+            mode = 'verilog',
+            verilog_outputs = verilog_modules,
         )
 
-        cur_partial_objs = depset([ partial_obj ], transitive=[cur_partial_objs])
+        cur_sim_objs = depset([ sim_obj ], transitive=[cur_sim_objs])
         cur_verilog_objs = depset([ verilog_obj ], transitive=[cur_verilog_objs])
 
 
     verilog_modules = []
     for modules in package_to_verilog_modules.values():
         verilog_modules += modules
+    sim_modules = []
+    for modules in package_to_sim_modules.values():
+        sim_modules += modules
+
+    return struct(
+        sim_objs = package_to_sim_obj.values(),
+        sim_objs_deps = input_sim_objects,
+        verilog_objs = package_to_verilog_obj.values(),
+        verilog_objs_deps = input_verilog_objects,
+        verilog_modules = verilog_modules,
+        verilog_modules_deps = depset(
+            transitive = [dep[VerilogInfo].sources for dep in ctx.attr.deps]+ [
+                info.verilog_lib.sources,
+            ],
+        ),
+        sim_modules = sim_modules,
+        sim_modules_deps = depset(
+            [],
+            transitive = [dep[BluespecInfo].sim_outputs for dep in ctx.attr.deps],
+        ),
+    )
+
+
+def _bluespec_library_impl(ctx):
+    compiled = _library_inner(ctx)
 
     return [
         DefaultInfo(
             files=depset(
-                package_to_partial_obj.values() +
-                package_to_verilog_obj.values() +
-                verilog_modules
+                compiled.sim_objs +
+                compiled.verilog_objs +
+                compiled.verilog_modules
             )
         ),
         BluespecInfo(
-            partial_objects = depset(
-                package_to_partial_obj.values(),
-                transitive = [ input_partial_objects ],
+            sim_objects = depset(
+                compiled.sim_objs,
+                transitive = [ compiled.sim_objs_deps ],
             ),
             verilog_objects = depset(
-                package_to_verilog_obj.values(),
-                transitive = [ input_verilog_objects ],
+                compiled.verilog_objs,
+                transitive = [ compiled.verilog_objs_deps ],
+            ),
+            sim_outputs = depset(
+                compiled.sim_modules,
+                transitive = [ compiled.sim_modules_deps ],
             ),
         ),
         VerilogInfo(
             sources = depset(
-                verilog_modules,
-                transitive = [dep[VerilogInfo].sources for dep in ctx.attr.deps] + [
-                    info.verilog_lib.sources
-                ],
+                compiled.verilog_modules,
+                transitive = [ compiled.verilog_modules_deps ],
             ),
         ),
     ]
@@ -178,3 +223,94 @@ bluespec_library = rule(
     toolchains = ["//build/bluespec:toolchain_type"]
 )
 
+
+def _bluesim_test_impl(ctx):
+    info = ctx.toolchains["//build/bluespec:toolchain_type"].bscinfo
+    cc_toolchain = find_cpp_toolchain(ctx)
+    bsc = info.bsc
+
+    sim_objs = depset(
+        [],
+        transitive = [dep[BluespecInfo].sim_objects for dep in ctx.attr.deps],
+    )
+    sim_outputs = depset(
+        [],
+        transitive = [dep[BluespecInfo].sim_outputs for dep in ctx.attr.deps],
+    )
+
+    pkg_path_set = {}
+    for obj in sim_objs.to_list() + sim_outputs.to_list():
+        pkg_path_set[obj.dirname] = True
+    pkg_path = ['+'] + pkg_path_set.keys()
+
+    test = ctx.actions.declare_file(ctx.attr.name)
+    testSo = ctx.actions.declare_file(ctx.attr.name + ".so")
+
+    cxx = cc_toolchain.compiler_executable
+    # HACK: if we use foo/gcc, use foo/g++ instead. This is needed because bsc
+    # uses the compiler to link C++ code, and gcc-as-a-linker does not -lstdc++
+    # by default, while g++-as-a-linker does.
+    # The proper way to fix this would be to better pipe cc_toolchain
+    # information into bsc somehow. Maybe using a real linker?
+    if cxx.endswith('/gcc'):
+        cxx = cxx[:-2] + "++"
+
+    ctx.actions.run(
+        mnemonic = "BluespecSimLink",
+        executable = ctx.executable._bscwrap,
+        tools = [
+            bsc[DefaultInfo].files_to_run,
+        ],
+        inputs = depset(
+            [],
+            transitive = [ bsc.files, sim_objs, sim_outputs ],
+        ),
+        arguments = [
+            "-p", ":".join(pkg_path),
+            "-sim",
+            "-simdir", test.dirname,
+            "-o", test.path,
+            "-e",
+            ctx.attr.top,
+        ],
+        env = {
+            "CXX": cxx,
+            "STRIP": cc_toolchain.strip_executable,
+            "BSC": bsc[DefaultInfo].files_to_run.executable.path,
+            "PATH": ctx.configuration.default_shell_env.get('PATH', ""),
+        },
+        outputs = [test, testSo]
+    )
+
+    return [
+        DefaultInfo(
+            executable = test,
+            runfiles = ctx.runfiles(
+                files = [ test, testSo ],
+            ),
+        ),
+    ]
+
+bluesim_test = rule(
+    implementation = _bluesim_test_impl,
+    attrs = {
+        "srcs": attr.label_list(allow_files = True),
+        "deps": attr.label_list(
+            providers = [BluespecInfo],
+        ),
+        "top": attr.string(),
+
+        "_bscwrap": attr.label(
+            default = Label("//build/bluespec:bscwrap"),
+            executable = True,
+            cfg = "exec",
+        ),
+        "_cc_toolchain": attr.label(
+            default = Label("@bazel_tools//tools/cpp:current_cc_toolchain"),
+        ),
+    },
+    test = True,
+    toolchains = [
+        "//build/bluespec:toolchain_type",
+    ],
+)
