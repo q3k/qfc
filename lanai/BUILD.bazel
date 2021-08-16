@@ -1,0 +1,46 @@
+load("//build/bluespec:rules.bzl", "bluespec_library", "bluesim_test")
+
+bluespec_library(
+    name = "Lanai",
+    srcs = [
+        "CPU_Defs.bsv",
+        "Lanai_IFC.bsv",
+        "CPU_ALU.bsv",
+        "CPU_RegisterFile.bsv",
+        "CPU_Compute.bsv",
+        "CPU_Fetch.bsv",
+        "Lanai_CPU.bsv",
+    ],
+    synthesize = {
+        "Lanai_CPU": ["mkLanaiCPU"],
+        "CPU_ALU": ["mkALU"],
+        "CPU_RegisterFile": ["mkCPURegisterFile"],
+    },
+    visibility = [
+        "//visibility:public",
+    ],
+)
+
+bluespec_library(
+    name = "Tb",
+    srcs = [
+        "Tb.bsv",
+    ],
+    synthesize = {
+        "Tb": ["mkTb"],
+    },
+    deps = [
+        ":Lanai",
+    ],
+    data = [
+        "bram.bin",
+    ],
+)
+
+bluesim_test(
+    name = "testbench",
+    deps = [
+        ":Tb",
+    ],
+    top = "mkTb",
+)

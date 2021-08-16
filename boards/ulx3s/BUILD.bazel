@@ -1,0 +1,27 @@
+load("//build/bluespec:rules.bzl", "bluespec_library")
+load("//build/synthesis:rules.bzl", "yosysflow_bitstream")
+
+bluespec_library(
+    name = "Board",
+    srcs = [
+        "Board.bsv",
+    ],
+    deps = [
+        "//lanai:Lanai",
+    ],
+    synthesize = {
+        "Board": ["mkTop"],
+    },
+    data = [
+        "bram.bin",
+    ],
+)
+
+yosysflow_bitstream(
+    name = 'ulx3s',
+    deps = [
+        ":Board",
+    ],
+    top = "mkTop",
+    constraints = "ulx3s_v20.lpf",
+)
