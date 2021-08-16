@@ -22,6 +22,7 @@ BluespecInfo = provider(
         "sim_objects",
         "verilog_objects",
         "sim_outputs",
+        "data_files",
     ],
 )
 
@@ -29,6 +30,7 @@ BluespecInfo = provider(
 VerilogInfo = provider(
     fields = [
         "sources",
+        "data_files",
     ],
 )
 

@@ -29,12 +29,14 @@ def _compile(ctx, src, dep_objs, output, mode, verilog_outputs=[], sim_outputs=[
     info = ctx.toolchains["//build/bluespec:toolchain_type"].bscinfo
     bsc = info.bsc[DefaultInfo].files_to_run
 
+    bdir = output.dirname
     pkg_path_set = {}
     for obj in dep_objs.to_list():
+        if obj.dirname == bdir:
+            continue
         pkg_path_set[obj.dirname] = True
     pkg_path = ['+'] + pkg_path_set.keys()
 
-    bdir = output.dirname
     arguments = [
         "-bdir", bdir,
         "-p", ":".join(pkg_path),
@@ -56,6 +58,7 @@ def _compile(ctx, src, dep_objs, output, mode, verilog_outputs=[], sim_outputs=[
         simdir = bdir
         arguments += [
             "-sim",
+            "-check-assert",
         ]
     else:
         fail("Invalid mode {}".format(mode))
@@ -120,6 +123,16 @@ def _library_inner(ctx):
         dep[BluespecInfo].verilog_objects
         for dep in ctx.attr.deps
     ])
+    data_files = depset(
+        direct = [],
+        transitive = [
+            d.files
+            for d in ctx.attr.data
+        ] + [
+            dep[BluespecInfo].data_files
+            for dep in ctx.attr.deps
+        ],
+    )
 
     cur_sim_objs = input_sim_objects
     cur_verilog_objs = input_verilog_objects
@@ -175,6 +188,7 @@ def _library_inner(ctx):
             [],
             transitive = [dep[BluespecInfo].sim_outputs for dep in ctx.attr.deps],
         ),
+        data_files = data_files,
     )
 
 
@@ -202,12 +216,14 @@ def _bluespec_library_impl(ctx):
                 compiled.sim_modules,
                 transitive = [ compiled.sim_modules_deps ],
             ),
+            data_files = compiled.data_files,
         ),
         VerilogInfo(
             sources = depset(
                 compiled.verilog_modules,
                 transitive = [ compiled.verilog_modules_deps ],
             ),
+            data_files = compiled.data_files,
         ),
     ]
 
@@ -217,6 +233,9 @@ bluespec_library = rule(
         "srcs": attr.label_list(allow_files = True),
         "deps": attr.label_list(
             providers = [BluespecInfo, VerilogInfo],
+        ),
+        "data": attr.label_list(
+            allow_files = True,
         ),
         "synthesize": attr.string_list_dict(),
     },
@@ -236,6 +255,16 @@ def _bluesim_test_impl(ctx):
     sim_outputs = depset(
         [],
         transitive = [dep[BluespecInfo].sim_outputs for dep in ctx.attr.deps],
+    )
+    data_files = depset(
+        [],
+        transitive = [
+            d.files
+            for d in ctx.attr.data
+        ] + [
+            dep[BluespecInfo].data_files
+            for dep in ctx.attr.deps
+        ],
     )
 
     pkg_path_set = {}
@@ -282,11 +311,29 @@ def _bluesim_test_impl(ctx):
         outputs = [test, testSo]
     )
 
+    wrapper = ctx.actions.declare_file(ctx.attr.name + ".wrap")
+    ctx.actions.write(
+        output = wrapper,
+        content = """#!/bin/sh
+            t="{}"
+            $t $@ >res 2>&1
+            cat res
+            if grep -q "Error:" res ; then
+                exit 1
+            fi
+            if grep -q "Dynamic assertion failed:" res ; then
+                exit 1
+            fi
+        """.format(test.short_path),
+        is_executable = True,
+    )
+
     return [
         DefaultInfo(
-            executable = test,
+            executable = wrapper,
             runfiles = ctx.runfiles(
-                files = [ test, testSo ],
+                files = [ wrapper, test, testSo  ],
+                transitive_files = data_files,
             ),
         ),
     ]
@@ -298,6 +345,7 @@ bluesim_test = rule(
         "deps": attr.label_list(
             providers = [BluespecInfo],
         ),
+        "data": attr.label_list(allow_files = True),
         "top": attr.string(),
 
         "_bscwrap": attr.label(

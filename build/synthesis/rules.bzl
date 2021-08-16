@@ -46,7 +46,7 @@ def _get_flags(ctx):
             nextpnr_flags += ["--package", "CABGA381"]
 
         return struct(
-            yosys_synth_command = "synth_ecp5 -top %TOP%",
+            yosys_synth_command = "synth_ecp5 -abc9 -nowidelut -top %TOP%",
             nextpnr_flags = nextpnr_flags,
         )
     fail("Unsupported FPGA (needs //build/platforms:fpga_family constraint set)")
@@ -62,6 +62,10 @@ def _yosysflow_bitstream_impl(ctx):
         ctx.files.srcs,
         transitive = [dep[VerilogInfo].sources for dep in ctx.attr.deps],
     )
+    data_files = depset(
+        [],
+        transitive = [dep[VerilogInfo].data_files for dep in ctx.attr.deps],
+    )
 
     srcline = " ".join([s.path for s in sources.to_list()])
     synth_command = flags.yosys_synth_command.replace('%TOP%', ctx.attr.top)
@@ -71,7 +75,7 @@ def _yosysflow_bitstream_impl(ctx):
     ctx.actions.write(
         output = scriptfile,
         content = """
-            read_verilog {}
+            read_verilog -defer {}
             {}
             write_json {}
         """.format(
@@ -88,7 +92,7 @@ def _yosysflow_bitstream_impl(ctx):
             "-s", scriptfile.path,
             "-q",
         ],
-        inputs = depset([ scriptfile ], transitive=[ sources ]),
+        inputs = depset([ scriptfile ], transitive=[ sources, data_files ]),
         outputs = [ json ],
     )
 

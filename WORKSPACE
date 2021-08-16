@@ -18,8 +18,8 @@ load("@io_tweag_rules_nixpkgs//nixpkgs:nixpkgs.bzl", "nixpkgs_git_repository", "
 
 nixpkgs_git_repository(
     name = "nixpkgs",
-    revision = "7b2982e22eb3ca5016161abc0946f88bb43b1e09",
-    sha256 = "c1b0483e6f34fe8f011ef424e0d59196c0f66a0e7a0a89d2e4b12986b43794ca",
+    revision = "6b574cd85176ecc96af1b93bf5d004c884863159",
+    sha256 = "5d04d42ddc5462e89aad66b9383abd41d784259b8be0234d1f6cd3972a8a8b3a",
 )
 
 nixpkgs_package(
@@ -39,7 +39,6 @@ bluespec_toolchain(
     name = "bsc_nixpkgs",
     bsc = ":bsc",
     verilog_lib = glob(["lib/Verilog/*.v"], [
-        "lib/Verilog/BRAM*Load.v",
         "lib/Verilog/ConstrainedRandom.v",
         "lib/Verilog/Convert*Z.v",
         "lib/Verilog/InoutConnect.v",
