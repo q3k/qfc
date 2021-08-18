@@ -1,10 +1,11 @@
 package Board;
 
-import BRAM :: *;
-import ClientServer :: *;
 import Connectable :: *;
 import Lanai_IFC :: *;
 import Lanai_CPU :: *;
+import Lanai_Memory :: *;
+
+import RAM :: *;
 
 interface GSR;
 endinterface
@@ -14,34 +15,6 @@ import "BVI" GSR =
         default_clock no_clock;
         default_reset gsr (GSR);
     endmodule
-
-
-interface TestMem;
-    interface Server#(Word, Word) imem;
-    interface Server#(DMemReq, Word) dmem;
-endinterface
-
-module mkBlockMem (TestMem);
-    BRAM_Configure cfg = defaultValue;
-    cfg.latency = 1;
-    cfg.loadFormat = tagged Hex "boards/ulx3s/bram.bin";
-    cfg.outFIFODepth = 3;
-    cfg.allowWriteResponseBypass = True;
-    BRAM2Port#(Bit#(13), Bit#(32)) bram <- mkBRAM2Server(cfg);
-
-    interface Server imem;
-        interface Put request;
-            method Action put(Word addr);
-                bram.portA.request.put(BRAMRequest { write: False
-                                                   , responseOnWrite: False
-                                                   , address: addr[14:2]
-                                                   , datain: 0
-                                                   });
-            endmethod
-        endinterface
-        interface Get response = bram.portA.response;
-    endinterface
-endmodule
 
 
 interface Top;
@@ -60,8 +33,9 @@ endinterface
 module mkTop (Top);
     GSR gsr <- mkGSR;
 
-    TestMem mem <- mkBlockMem;
+    Lanai_Memory#(4096) mem <- mkBlockMemory("boards/ulx3s/bram.bin");
     Lanai_IFC cpu <- mkLanaiCPU;
+
     mkConnection(cpu.imem_client, mem.imem);
 
     interface ESP32 wifi;

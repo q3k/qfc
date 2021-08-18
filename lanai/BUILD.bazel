@@ -10,6 +10,7 @@ bluespec_library(
         "CPU_Compute.bsv",
         "CPU_Fetch.bsv",
         "Lanai_CPU.bsv",
+        "Lanai_Memory.bsv",
     ],
     synthesize = {
         "Lanai_CPU": ["mkLanaiCPU"],

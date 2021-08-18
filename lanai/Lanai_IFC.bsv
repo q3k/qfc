@@ -5,7 +5,7 @@ import ClientServer :: *;
 
 import CPU_Defs :: *;
 
-export Word, Lanai_IMem (..), Lanai_IFC (..), DMemReq (..);
+export Word, Lanai_IFC (..), DMemReq (..);
 
 typedef union tagged {
     Word Read;
@@ -14,10 +14,6 @@ typedef union tagged {
         Word data;
     } Write;
 } DMemReq deriving (Bits);
-
-interface Lanai_IMem;
-    method ActionValue#(Word) read(Word w);
-endinterface
 
 interface Lanai_IFC;
     interface Client #(DMemReq, Word) dmem_client;
