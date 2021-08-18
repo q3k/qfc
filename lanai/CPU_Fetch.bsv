@@ -63,36 +63,13 @@ module mkCPUFetch #( RegisterRead pcRead
                     tagged RR .rr: True;
                     default: False;
                 endcase;
-                AluOperationKind aluOpKind = case (instr) matches
-                    tagged RI .ri: case (ri.operation) matches
-                        Add: Add;
-                        Addc: Add;
-                        Sub: Sub;
-                        Subb: Sub;
-                        And: And;
-                        Or: Or;
-                        Xor: Xor;
-                        Shift: Shift;
-                    endcase
-                    tagged RR .rr: case (rr.operation) matches
-                        Add: Add;
-                        Addc: Add;
-                        Sub: Sub;
-                        Subb: Sub;
-                        And: And;
-                        Or: Or;
-                        Xor: Xor;
-                        LShift: Shift;
-                        AShift: Shift;
-                    endcase
-                endcase;
                 out.enq(FetchToCompute { instr: instr
                                        , pc: fetched
                                        , rs1: unpack(data[22:18])
                                        , rs2: unpack(data[15:11])
                                        , rd: unpack(data[27:23])
                                        , runAlu: runAlu
-                                       , aluOpKind: aluOpKind
+                                       , aluOpKind: insAluOpKind(instr)
                                        });
             endmethod
         endinterface

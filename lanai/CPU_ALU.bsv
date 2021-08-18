@@ -10,6 +10,7 @@ typedef struct {
     AluOperationKind kind;
     Bool shiftArithmetic;
     Bool addCarry;
+    Bool condition;
 } AluOperation deriving (Bits);
 
 typedef struct {
@@ -25,13 +26,12 @@ endinterface
 module mkALU (ALU_IFC);
     method ActionValue#(AluResult) run(AluOperation op);
         let res = AluResult { result: 0
-                            , sw: StatusWord { zero: False
-                                             , negative: False
+                            , sw: StatusWord { carry: False
                                              , overflow: False
-                                             , carry: False
+                                             , zero: False
+                                             , negative: False
                                              }
                             };
-
 
         Bit#(64) shiftIn = op.shiftArithmetic
                            ? signExtend(op.a)
@@ -75,10 +75,13 @@ module mkALU (ALU_IFC);
                 if ((amount > 0) && op.shiftArithmetic)
                     res.sw.carry = shifted[32] == 1;
             end
+            Select: begin
+                res.result = op.condition ? op.a : op.b;
+            end
         endcase
 
         res.sw.zero = (res.result == 0);
-        res.sw.negative = res.result[31] == 1;
+        res.sw.negative = (res.result[31] == 1);
 
         return res;
     endmethod

@@ -45,6 +45,7 @@ module mkCPUCompute #( RegisterRead rs1
                                  , shiftArithmetic: False
                                  , addCarry: sw.carry
                                  , kind: q.first.aluOpKind
+                                 , condition: False
                                  };
 
         Bool flags = False;
@@ -84,6 +85,9 @@ module mkCPUCompute #( RegisterRead rs1
                     end
                     AShift: begin
                         aluOp.shiftArithmetic = True;
+                    end
+                    Select: begin
+                        aluOp.condition = evaluateCondition(rr.condition, sw);
                     end
                 endcase
 

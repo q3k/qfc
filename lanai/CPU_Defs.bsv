@@ -39,7 +39,6 @@ endinstance
 typedef union tagged {
     InstRI  RI;
     InstRR  RR;
-    InstRRR RRR;
     InstRM  RM;
     InstRRM RRM;
 } Instruction deriving(FShow);
@@ -59,15 +58,7 @@ instance Bits#(Instruction, 32);
                                         , flags: unpack(x[17])
                                         , source2: unpack(x[15:11])
                                         , operation: unpack(x[10:3])
-                                        };
-            4'b1101: tagged RRR InstRRR { destination: unpack(x[27:23])
-                                        , source1: unpack(x[22:18])
-                                        , flags: unpack(x[17])
-                                        , high: unpack(x[16])
-                                        , source2: unpack(x[15:11])
-                                        , operation2: unpack(x[10:8])
-                                        , source3: unpack(x[7:3])
-                                        , operation1: unpack(x[2:0])
+                                        , condition: unpack({x[2:0], x[16]})
                                         };
             4'b100?: tagged RM InstRM   { store: unpack(x[28])
                                         , destination: unpack(x[27:23])
@@ -109,20 +100,10 @@ instance Bits#(Instruction, 32);
                              , pack(rr.destination)
                              , pack(rr.source1)
                              , pack(rr.flags)
-                             , 1'b0
+                             , pack(rr.condition)[0]
                              , pack(rr.source2)
                              , pack(rr.operation)
-                             , 3'b0
-                             };
-            tagged RRR .rrr: { 4'b1101
-                             , pack(rrr.destination)
-                             , pack(rrr.source1)
-                             , pack(rrr.flags)
-                             , pack(rrr.high)
-                             , pack(rrr.source2)
-                             , pack(rrr.operation2)
-                             , pack(rrr.source3)
-                             , pack(rrr.operation1)
+                             , pack(rr.condition)[3:1]
                              };
             tagged RM .rm:   { 3'b100
                              , pack(rm.store)
@@ -162,18 +143,8 @@ typedef struct {
     Register source2;
     Bool flags;
     RR_Operation operation;
+    Condition condition;
 } InstRR deriving (FShow);
-
-typedef struct {
-    Register destination;
-    Register source1;
-    Bool flags;
-    Bool high;
-    Register source2;
-    RI_Operation operation2;
-    Register source3;
-    RI_Operation operation1;
-} InstRRR deriving (FShow);
 
 typedef struct {
     Bool store;
@@ -196,6 +167,45 @@ typedef struct {
     Bool zeroExtend;
 } InstRRM deriving (FShow);
 
+typedef enum { T  = 4'b0000 // true
+             , F  = 4'b0001 // false
+             , HI = 4'b0010 // high
+             , LO = 4'b0011 // low or same
+             , CC = 4'b0100 // carry cleared
+             , CS = 4'b0101 // carrry set
+             , NE = 4'b0110 // not equal
+             , EQ = 4'b0111 // equal
+             , VC = 4'b1000 // overflow cleared
+             , VS = 4'b1001 // overflow set
+             , PL = 4'b1010 // plus
+             , MI = 4'b1011 // minus
+             , GE = 4'b1100 // greater than or equal
+             , LT = 4'b1101 // less than
+             , GT = 4'b1110 // greater than
+             , LE = 4'b1111 // less than or equal
+             } Condition deriving (Bits, Eq, FShow);
+
+function Bool evaluateCondition(Condition cond, StatusWord sw);
+    return case (cond) matches
+        T: True;
+        F: False;
+        HI: (sw.carry && !sw.zero);
+        LO: (!sw.carry && sw.zero);
+        CC: !sw.carry;
+        CS: sw.carry;
+        NE: !sw.zero;
+        EQ: sw.zero;
+        VC: !sw.overflow;
+        VS: sw.overflow;
+        PL: !sw.negative;
+        MI: sw.negative;
+        GE: ((sw.negative && sw.overflow) || (!sw.negative && !sw.overflow));
+        LT: ((sw.negative && !sw.overflow) || (!sw.negative && sw.overflow));
+        GT: ((sw.negative && sw.overflow && !sw.zero) || (!sw.negative && !sw.overflow && !sw.zero));
+        LE: (sw.zero || (sw.negative && !sw.overflow) || (!sw.negative && sw.overflow));
+    endcase;
+endfunction
+
 typedef enum {
     FullWord = 2'b01,
     HalfWord = 2'b00,
@@ -214,7 +224,7 @@ typedef enum {
 } RI_Operation deriving (Bits, Eq, FShow);
 
 typedef enum {
-    Add, Addc, Sub, Subb, And, Or, Xor, LShift, AShift, Unknown
+    Add, Addc, Sub, Subb, And, Or, Xor, LShift, AShift, Select, Unknown
 } RR_Operation deriving (Eq, FShow);
 
 instance Bits#(RR_Operation, 8);
@@ -229,6 +239,7 @@ instance Bits#(RR_Operation, 8);
             8'b110?????: Xor;
             8'b11110???: LShift;
             8'b11111???: AShift;
+            8'b11100000: Select;
             default:     Unknown;
         endcase;
     endfunction
@@ -243,6 +254,7 @@ instance Bits#(RR_Operation, 8);
             Xor:    8'b110_00000;
             LShift: 8'b111_10000;
             AShift: 8'b111_11000;
+            Select: 8'b111_00000;
         endcase;
     endfunction
 endinstance
@@ -268,8 +280,37 @@ interface RegisterWriteCompute;
 endinterface
 
 typedef enum {
-    Add, Sub, And, Or, Xor, Shift
+    Add, Sub, And, Or, Xor, Shift, Select
 } AluOperationKind deriving (Bits);
+
+function AluOperationKind insAluOpKind(Instruction instr);
+    return case (instr) matches
+        tagged RI .ri: case (ri.operation) matches
+            Add: Add;
+            Addc: Add;
+            Sub: Sub;
+            Subb: Sub;
+            And: And;
+            Or: Or;
+            Xor: Xor;
+            Shift: Shift;
+            default: Add;
+        endcase
+        tagged RR .rr: case (rr.operation) matches
+            Add: Add;
+            Addc: Add;
+            Sub: Sub;
+            Subb: Sub;
+            And: And;
+            Or: Or;
+            Xor: Xor;
+            LShift: Shift;
+            AShift: Shift;
+            Select: Select;
+            default: Add;
+        endcase
+    endcase;
+endfunction
 
 typedef struct {
     Instruction instr;
