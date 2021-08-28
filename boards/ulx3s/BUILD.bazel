@@ -10,7 +10,7 @@ bluespec_library(
         "//lanai:Lanai",
     ],
     synthesize = {
-        "Board": ["mkTop"],
+        "Board": ["mkTop", "mkMemory"],
     },
     data = [
         "bram.bin",

@@ -16,7 +16,7 @@ typedef struct {
     Bool negative;
     Bool overflow;
     Bool carry;
-} StatusWord;
+} StatusWord deriving (FShow);
 
 instance Bits#(StatusWord, 32);
     function StatusWord unpack(Bit#(32) x);
@@ -279,6 +279,10 @@ interface RegisterWriteCompute;
     method Action write(Maybe#(StatusWord) sw, Maybe#(Tuple2#(Register, Word)) rd);
 endinterface
 
+interface RegisterWriteMemory;
+    method Action write(Register rd, Word value);
+endinterface
+
 typedef enum {
     Add, Sub, And, Or, Xor, Shift, Select
 } AluOperationKind deriving (Bits);
@@ -321,6 +325,15 @@ typedef struct {
     Bool runAlu;
     AluOperationKind aluOpKind;
 } FetchToCompute deriving (Bits);
+
+typedef struct {
+    Word ea;
+    Bool store;
+    // If 'store', the value to store at ea;
+    Word value;
+    // If not 'store', the register to which read ea.
+    Register rd;
+} ComputeToMemory deriving (Bits);
 
 interface ComputedPC;
     method Word get;

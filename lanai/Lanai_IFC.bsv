@@ -7,12 +7,9 @@ import CPU_Defs :: *;
 
 export Word, Lanai_IFC (..), DMemReq (..);
 
-typedef union tagged {
-    Word Read;
-    struct {
-        Word address;
-        Word data;
-    } Write;
+typedef struct {
+    Word addr;
+    Maybe#(Word) data;
 } DMemReq deriving (Bits);
 
 interface Lanai_IFC;

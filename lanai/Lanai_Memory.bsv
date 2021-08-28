@@ -16,7 +16,7 @@ module mkBlockMemory#(String filename) (Lanai_Memory#(k)) provisos (Log#(k, n));
     cfg.latency = 1;
     cfg.loadFormat = tagged Hex filename;
     cfg.outFIFODepth = 3;
-    cfg.allowWriteResponseBypass = True;
+    cfg.allowWriteResponseBypass = False;
     BRAM2Port#(Bit#(n), Bit#(32)) bram <- mkBRAM2Server(cfg);
 
     let nwords = valueOf(n);
@@ -37,18 +37,12 @@ module mkBlockMemory#(String filename) (Lanai_Memory#(k)) provisos (Log#(k, n));
     interface Server dmem;
         interface Put request;
             method Action put(DMemReq req);
-                bram.portB.request.put(case (req) matches
-                    tagged Read .addr: BRAMRequest { write: False
-                                                   , responseOnWrite: False
-                                                   , address: addr[nwords+1:2]
-                                                   , datain: 0
-                                                   };
-                    tagged Write .wr: BRAMRequest  { write: True
-                                                   , responseOnWrite: False
-                                                   , address: wr.address[nwords+1:2]
-                                                   , datain: wr.data
-                                                   };
-                endcase);
+                let breq = BRAMRequest { write: isValid(req.data)
+                                       , responseOnWrite: False
+                                       , address: req.addr[nwords+1:2]
+                                       , datain: fromMaybe(0, req.data)
+                                       };
+                bram.portB.request.put(breq);
             endmethod
         endinterface
         interface Get response = bram.portB.response;

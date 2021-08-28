@@ -9,6 +9,7 @@ bluespec_library(
         "CPU_RegisterFile.bsv",
         "CPU_Compute.bsv",
         "CPU_Fetch.bsv",
+        "CPU_Memory.bsv",
         "Lanai_CPU.bsv",
         "Lanai_Memory.bsv",
     ],

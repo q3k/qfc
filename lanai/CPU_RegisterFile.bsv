@@ -14,6 +14,7 @@ interface CPU_RegisterFile;
     interface RegisterRead computeSource2;
     interface StatusWordRead computeStatusSource;
     interface RegisterWriteCompute computeWrite;
+    interface RegisterWriteMemory memoryWrite;
 endinterface
 
 module mkConstantReg #(Word val)
@@ -24,6 +25,8 @@ module mkConstantReg #(Word val)
      method Action _write(Word w);
      endmethod
 endmodule
+
+typedef Wire#(Tuple2#(Register, Word)) WriteReq;
 
 (* synthesize *)
 module mkCPURegisterFile(CPU_RegisterFile);
@@ -37,19 +40,38 @@ module mkCPURegisterFile(CPU_RegisterFile);
     endfunction
     Vector#(32, Reg#(Word)) regs <- genWithM(makeRegs);
 
+    WriteReq writeReqCompute1 <- mkWire;
+    WriteReq writeReqCompute2 <- mkWire;
+    WriteReq writeReqMemory <- mkWire;
+
+    Vector #(3, WriteReq) writeReqs;
+    writeReqs[0] = writeReqCompute1;
+    writeReqs[1] = writeReqCompute2;
+    writeReqs[2] = writeReqMemory;
+
+
+    Vector #(29, Register) writableRegisters;
+    for (Integer i = 0; i < 29; i = i + 1) begin
+        Bit#(32) no = fromInteger(i + 3);
+        writableRegisters[i] = unpack(no[4:0]);
+    end
+
+    function Rules genRegRules(Register regno);
+        function Rules genRegRule(WriteReq wr);
+            return (rules
+               rule foo if (tpl_1(wr) == regno);
+                   regs[pack(regno)] <= tpl_2(wr);
+               endrule
+            endrules);
+        endfunction
+        return foldl1(rJoinPreempts, map(genRegRule, writeReqs));
+    endfunction
+    addRules(joinRules(map(genRegRules, writableRegisters)));
 
     function RegisterRead makeRead();
         return (interface RegisterRead;
             method Word read(Register ix);
                 return regs[pack(ix)];
-            endmethod
-        endinterface);
-    endfunction
-
-    function RegisterWrite makeWrite();
-        return (interface RegisterWrite;
-            method Action write(Register ix, Word data);
-                regs[pack(ix)] <= data;
             endmethod
         endinterface);
     endfunction
@@ -66,22 +88,23 @@ module mkCPURegisterFile(CPU_RegisterFile);
         method Action write( Maybe#(StatusWord) sw
                            , Maybe#(Tuple2#(Register, Word)) rd
                            );
-            Bool wroteStatus = False;
+
             case (sw) matches
                 tagged Valid .swd: begin
-                    regs[pack(PS)] <= pack(swd);
-                    wroteStatus = True;
+                    writeReqCompute1 <= tuple2(PS, pack(swd));
                 end
             endcase
             case (rd) matches
                 tagged Valid .rdd: begin
-                    let ix = tpl_1(rdd);
-                    let data = tpl_2(rdd);
-                    if ((ix != PS) || !wroteStatus) begin
-                        regs[pack(ix)] <= data;
-                    end
+                    writeReqCompute2 <= rdd;
                 end
             endcase
+        endmethod
+    endinterface
+
+    interface RegisterWriteMemory memoryWrite;
+        method Action write(Register rd, Word value);
+            writeReqMemory <= tuple2(rd, value);
         endmethod
     endinterface
 endmodule

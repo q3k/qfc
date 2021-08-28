@@ -63,10 +63,14 @@ module mkCPUFetch #( RegisterRead pcRead
                     tagged RR .rr: True;
                     default: False;
                 endcase;
+                Register rs2 = case(instr) matches
+                    tagged RM .rm: unpack(data[27:23]);
+                    default: unpack(data[15:11]);
+                endcase;
                 out.enq(FetchToCompute { instr: instr
                                        , pc: fetched
                                        , rs1: unpack(data[22:18])
-                                       , rs2: unpack(data[15:11])
+                                       , rs2: rs2
                                        , rd: unpack(data[27:23])
                                        , runAlu: runAlu
                                        , aluOpKind: insAluOpKind(instr)

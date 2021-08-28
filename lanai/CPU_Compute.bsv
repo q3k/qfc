@@ -11,6 +11,7 @@ import CPU_ALU :: *;
 
 interface CPU_Compute;
     interface Put #(FetchToCompute) fetch;
+    interface Get #(ComputeToMemory) memory;
     interface ComputedPC pc;
 endinterface
 
@@ -21,18 +22,26 @@ module mkCPUCompute #( RegisterRead rs1
                      ) (CPU_Compute);
 
     FIFO#(FetchToCompute) q <- mkPipelineFIFO;
+    FIFO#(ComputeToMemory) out <- mkBypassFIFO;
     Reg#(Word) computedPC <- mkWire;
-    let probe <- mkProbe;
+
+    let busyProbe <- mkProbe;
+    let instrProbe <- mkProbe;
+    let pcProbe <- mkProbe;
+    let eaProbe <- mkProbe;
     ALU_IFC alu1 <- mkALU;
     //ALU_IFC alu2 <- mkALU;
 
     rule execute;
+        busyProbe <= True;
+
         q.deq;
         let instr = q.first.instr;
         let instrPC = q.first.pc;
         let runAlu = q.first.runAlu;
         let destination = q.first.rd;
-        probe <= instr;
+        instrProbe <= instr;
+        pcProbe <= instrPC;
         StatusWord sw = rsw.read;
 
         // Optimization: always read source1/source2 regs, as they use the same opcode positions.
@@ -49,6 +58,10 @@ module mkCPUCompute #( RegisterRead rs1
                                  };
 
         Bool flags = False;
+        Maybe#(Tuple2#(Register, Word)) mrd = tagged Invalid;
+        Maybe#(StatusWord) msw = tagged Invalid;
+
+
         case (instr) matches
             tagged RI .ri: begin
                 let shift = ri.high ? 16 : 0;
@@ -88,17 +101,26 @@ module mkCPUCompute #( RegisterRead rs1
                     end
                     Select: begin
                         aluOp.condition = evaluateCondition(rr.condition, sw);
+                        $display("eval cond code: ", rr.condition, ", sw: ", fshow(sw), ", res: ", aluOp.condition);
                     end
                 endcase
 
                 flags = rr.flags;
             end
+            tagged RM .rm: begin
+                Word added = (rs1v + signExtend(rm.constant))[31:0];
+                Word ea = rm.p ? added : rs1v;
+                if (rm.q) begin
+                    mrd = tagged Valid tuple2(q.first.rs1, added);
+                end
+                out.enq(ComputeToMemory { ea: ea
+                                        , store: rm.store
+                                        , value: rs2v
+                                        , rd: destination });
+            end
         endcase
 
         if (runAlu) begin
-            Maybe#(StatusWord) msw = tagged Invalid;
-            Maybe#(Tuple2#(Register, Word)) mrd = tagged Invalid;
-
             let aluRes <- alu1.run(aluOp);
             if (destination == PC) begin
                 computedPC <= aluRes.result;
@@ -109,12 +131,26 @@ module mkCPUCompute #( RegisterRead rs1
                 msw = tagged Valid aluRes.sw;
             end
 
-            rwr.write(msw, mrd);
         end
+        rwr.write(msw, mrd);
+    endrule
+
+    (* preempts = "execute, noExecute" *)
+    rule noExecute;
+        busyProbe <= False;
     endrule
 
     interface Put fetch;
         method put = q.enq;
+    endinterface
+
+    interface Get memory;
+        method ActionValue#(ComputeToMemory) get();
+            out.deq;
+            let o = out.first;
+            eaProbe <= o.ea;
+            return o;
+        endmethod
     endinterface
 
     interface ComputedPC pc;

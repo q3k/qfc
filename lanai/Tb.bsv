@@ -12,14 +12,15 @@ module mkTb (Empty);
     Lanai_IFC cpu <- mkLanaiCPU;
 
     mkConnection(cpu.imem_client, mem.imem);
+    mkConnection(cpu.dmem_client, mem.dmem);
 
     Reg#(int) i <- mkReg(0);
     rule testFetch;
-        if (i > 100) begin
+        if (i > 300) begin
             $finish;
         end
         i <= i + 1;
-        $display("counter:", cpu.readPC);
+        //$display("counter:", cpu.readPC);
     endrule
 endmodule
 
