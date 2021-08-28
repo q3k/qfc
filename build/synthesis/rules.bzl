@@ -1,4 +1,4 @@
-load("//build:providers.bzl", "YosysFlowInfo", "VerilogInfo")
+load("@qfc//build:providers.bzl", "YosysFlowInfo", "VerilogInfo")
 
 def _yosysflow_toolchain_impl(ctx):
     toolchain_info = platform_common.ToolchainInfo(
@@ -42,6 +42,8 @@ def _get_flags(ctx):
         ]
         if _is_set(ctx, ctx.attr._ecp5_lfe5u_12f):
             nextpnr_flags.append("--12k")
+        if _is_set(ctx, ctx.attr._ecp5_lfe5u_85f):
+            nextpnr_flags.append("--85k")
         if _is_set(ctx, ctx.attr._ecp5_cabga381):
             nextpnr_flags += ["--package", "CABGA381"]
 
@@ -52,7 +54,7 @@ def _get_flags(ctx):
     fail("Unsupported FPGA (needs //build/platforms:fpga_family constraint set)")
 
 def _yosysflow_bitstream_impl(ctx):
-    info = ctx.toolchains["//build/synthesis:toolchain_type"].yosysflowinfo
+    info = ctx.toolchains["@qfc//build/synthesis:toolchain_type"].yosysflowinfo
     yosys = info.yosys[DefaultInfo].files_to_run
     nextpnr = info.nextpnr[DefaultInfo].files_to_run
     packer = info.packer[DefaultInfo].files_to_run
@@ -143,10 +145,11 @@ yosysflow_bitstream = rule(
         "top": attr.string(),
         "constraints": attr.label(allow_single_file = True),
 
-        "_fpga_family_ecp5": attr.label(default="//build/platforms:ecp5"),
-        "_fpga_family_ice40": attr.label(default="//build/platforms:ice40"),
-        "_ecp5_lfe5u_12f": attr.label(default="//build/platforms:LFE5U_12F"),
-        "_ecp5_cabga381": attr.label(default="//build/platforms:CABGA381"),
+        "_fpga_family_ecp5": attr.label(default="@qfc//build/platforms:ecp5"),
+        "_fpga_family_ice40": attr.label(default="@qfc//build/platforms:ice40"),
+        "_ecp5_lfe5u_12f": attr.label(default="@qfc//build/platforms:LFE5U_12F"),
+        "_ecp5_lfe5u_85f": attr.label(default="@qfc//build/platforms:LFE5U_85F"),
+        "_ecp5_cabga381": attr.label(default="@qfc//build/platforms:CABGA381"),
     },
-    toolchains = ["//build/synthesis:toolchain_type"],
+    toolchains = ["@qfc//build/synthesis:toolchain_type"],
 )

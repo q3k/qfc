@@ -21,6 +21,11 @@ constraint_value(
     constraint_setting = ":ecp5_device_type",
 )
 
+constraint_value(
+    name = "LFE5U_85F",
+    constraint_setting = ":ecp5_device_type",
+)
+
 constraint_setting(name = "ecp5_package")
 
 constraint_value(
@@ -41,6 +46,17 @@ platform(
         "@platforms//os:none",
         ":ecp5",
         ":LFE5U_12F",
+        ":CABGA381",
+        ":ulx3s",
+    ],
+)
+
+platform(
+    name = "ulx3s_85f",
+    constraint_values = [
+        "@platforms//os:none",
+        ":ecp5",
+        ":LFE5U_85F",
         ":CABGA381",
         ":ulx3s",
     ],

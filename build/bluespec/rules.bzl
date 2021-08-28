@@ -1,4 +1,4 @@
-load("//build:providers.bzl", "BscInfo", "VerilogInfo", "BluespecInfo")
+load("@qfc//build:providers.bzl", "BscInfo", "VerilogInfo", "BluespecInfo")
 load("@rules_cc//cc:toolchain_utils.bzl", "find_cpp_toolchain")
 
 def _bluespec_toolchain_impl(ctx):
@@ -26,7 +26,7 @@ bluespec_toolchain = rule(
 )
 
 def _compile(ctx, src, dep_objs, output, mode, verilog_outputs=[], sim_outputs=[]):
-    info = ctx.toolchains["//build/bluespec:toolchain_type"].bscinfo
+    info = ctx.toolchains["@qfc//build/bluespec:toolchain_type"].bscinfo
     bsc = info.bsc[DefaultInfo].files_to_run
 
     bdir = output.dirname
@@ -77,7 +77,7 @@ def _compile(ctx, src, dep_objs, output, mode, verilog_outputs=[], sim_outputs=[
 
 
 def _library_inner(ctx):
-    info = ctx.toolchains["//build/bluespec:toolchain_type"].bscinfo
+    info = ctx.toolchains["@qfc//build/bluespec:toolchain_type"].bscinfo
     bsc = info.bsc[DefaultInfo].files_to_run
 
     package_order = []
@@ -239,12 +239,12 @@ bluespec_library = rule(
         ),
         "synthesize": attr.string_list_dict(),
     },
-    toolchains = ["//build/bluespec:toolchain_type"]
+    toolchains = ["@qfc//build/bluespec:toolchain_type"]
 )
 
 
 def _bluesim_test_impl(ctx):
-    info = ctx.toolchains["//build/bluespec:toolchain_type"].bscinfo
+    info = ctx.toolchains["@qfc//build/bluespec:toolchain_type"].bscinfo
     cc_toolchain = find_cpp_toolchain(ctx)
     bsc = info.bsc
 
@@ -349,7 +349,7 @@ bluesim_test = rule(
         "top": attr.string(),
 
         "_bscwrap": attr.label(
-            default = Label("//build/bluespec:bscwrap"),
+            default = Label("@qfc//build/bluespec:bscwrap"),
             executable = True,
             cfg = "exec",
         ),
@@ -359,6 +359,6 @@ bluesim_test = rule(
     },
     test = True,
     toolchains = [
-        "//build/bluespec:toolchain_type",
+        "@qfc//build/bluespec:toolchain_type",
     ],
 )
