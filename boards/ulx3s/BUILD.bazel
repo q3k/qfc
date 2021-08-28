@@ -22,6 +22,9 @@ yosysflow_bitstream(
     deps = [
         ":Board",
     ],
+    srcs = [
+        "BRAM2Load.v",
+    ],
     top = "mkTop",
     constraints = "ulx3s_v20.lpf",
 )

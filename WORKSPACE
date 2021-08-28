@@ -39,6 +39,8 @@ bluespec_toolchain(
     name = "bsc_nixpkgs",
     bsc = ":bsc",
     verilog_lib = glob(["lib/Verilog/*.v"], [
+        "lib/Verilog/BRAM2.v",
+        "lib/Verilog/BRAM2Load.v",
         "lib/Verilog/ConstrainedRandom.v",
         "lib/Verilog/Convert*Z.v",
         "lib/Verilog/InoutConnect.v",
