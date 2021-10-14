@@ -4,18 +4,8 @@ import Connectable :: *;
 import Lanai_IFC :: *;
 import Lanai_CPU :: *;
 import Lanai_Memory :: *;
-
+import ECP5 :: *;
 import RAM :: *;
-
-interface GSR;
-endinterface
-
-import "BVI" GSR =
-    module mkGSR (GSR ifc);
-        default_clock no_clock;
-        default_reset gsr (GSR);
-    endmodule
-
 
 interface Top;
     (* always_enabled *)

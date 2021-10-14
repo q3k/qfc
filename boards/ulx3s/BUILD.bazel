@@ -8,6 +8,7 @@ bluespec_library(
     ],
     deps = [
         "//lanai:Lanai",
+        "//fpga:ECP5",
     ],
     synthesize = {
         "Board": ["mkTop", "mkMemory"],

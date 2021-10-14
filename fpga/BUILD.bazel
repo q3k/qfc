@@ -1,0 +1,9 @@
+load("//build/bluespec:rules.bzl", "bluespec_library")
+
+bluespec_library(
+    name = "ECP5",
+    srcs = [
+        "ECP5.bsv",
+    ],
+    visibility = ["//visibility:public"],
+)
