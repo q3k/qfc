@@ -6,9 +6,9 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_tweag_rules_nixpkgs",
-    strip_prefix = "rules_nixpkgs-a388ab60dea07c3fc182453e89ff1a67c9d3eba6",
-    urls = ["https://github.com/tweag/rules_nixpkgs/archive/a388ab60dea07c3fc182453e89ff1a67c9d3eba6.tar.gz"],
-    sha256 = "6bedf80d6cb82d3f1876e27f2ff9a2cc814d65f924deba14b49698bb1fb2a7f7",
+    strip_prefix = "rules_nixpkgs-81f61c4b5afcf50665b7073f7fce4c1755b4b9a3",
+    urls = ["https://github.com/tweag/rules_nixpkgs/archive/81f61c4b5afcf50665b7073f7fce4c1755b4b9a3.tar.gz"],
+    sha256 = "33fd540d0283cf9956d0a5a640acb1430c81539a84069114beaf9640c96d221a",
 )
 
 load("@io_tweag_rules_nixpkgs//nixpkgs:repositories.bzl", "rules_nixpkgs_dependencies")
@@ -18,8 +18,8 @@ load("@io_tweag_rules_nixpkgs//nixpkgs:nixpkgs.bzl", "nixpkgs_git_repository", "
 
 nixpkgs_git_repository(
     name = "nixpkgs",
-    revision = "6b574cd85176ecc96af1b93bf5d004c884863159",
-    sha256 = "5d04d42ddc5462e89aad66b9383abd41d784259b8be0234d1f6cd3972a8a8b3a",
+    revision = "ea25862403b62189b0e4256d1a17ed611f0d88bf",
+    sha256 = "2a7a0e10461382470b1196f60d0ab173d090d0030526f517b1716e9cf318ef14",
 )
 
 nixpkgs_package(
@@ -64,9 +64,9 @@ toolchain(
 
 nixpkgs_package(
     name = "yosysflow",
-    repositories = { "nixpkgs": "@nixpkgs//:default.nix" },
+    repositories = { "nixpkgs1": "@nixpkgs//:default.nix" },
     nix_file_content = """
-with import <nixpkgs> {}; symlinkJoin {
+with import <nixpkgs1> {}; symlinkJoin {
     name = "yosysflow";
     paths = with pkgs; [ yosys nextpnr trellis ];
 }
