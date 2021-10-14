@@ -16,35 +16,41 @@ interface CPU_Memory;
 endinterface
 
 typedef struct {
-    Register rd;
+    Maybe#(Register) rd;
 } WaitReadResponse deriving (Bits);
 
 module mkCPUMemory #( RegisterWriteMemory rwr
+                    , RegisterWriteBypass bypass
                     ) (CPU_Memory);
 
-    FIFO #(ComputeToMemory) q <- mkPipelineFIFO;
+    FIFOF #(ComputeToMemory) q <- mkPipelineFIFOF;
     FIFOF #(WaitReadResponse) waitRead <- mkPipelineFIFOF;
+
     PulseWire busyReq <- mkPulseWire;
     PulseWire busyResp <- mkPulseWire;
+    PulseWire busyPut <- mkPulseWire;
 
     let busyReqProbe <- mkProbe;
     let busyRespProbe <- mkProbe;
-    let writeStallProbe <- mkProbe;
+    let busyPutProbe <- mkProbe;
+    let fullQ <- mkProbe;
+    let fullWaitRead <- mkProbe;
 
     let eaProbe <- mkProbe;
-    let storeProbe <- mkProbe;
-    let valueProbe <- mkProbe;
-    let rdProbe <- mkProbe;
-
     let responseRegProbe <- mkProbe;
 
     rule updateBusyProbe;
         busyReqProbe <= busyReq;
         busyRespProbe <= busyResp;
     endrule
-
-    rule updateStallProbe;
-        writeStallProbe <= waitRead.notEmpty;
+    rule updateBusyPutProbe;
+        busyPutProbe <= busyPut;
+    endrule
+    rule updateFullQ;
+        fullQ <= !q.notFull;
+    endrule
+    rule updateFullWaitRead;
+        fullWaitRead <= !waitRead.notFull;
     endrule
 
     interface Client dmem;
@@ -54,36 +60,46 @@ module mkCPUMemory #( RegisterWriteMemory rwr
 
                 q.deq;
                 eaProbe <= q.first.ea;
-                storeProbe <= q.first.store;
-                valueProbe <= q.first.value;
-                rdProbe <= q.first.rd;
 
-                if (q.first.store == False) begin
-                    waitRead.enq(WaitReadResponse { rd: q.first.rd });
-                end
+                Maybe#(Word) data = tagged Invalid;
+                case (q.first.op) matches
+                    tagged Noop: begin
+                        waitRead.enq(WaitReadResponse { rd: tagged Invalid });
+                    end
+                    tagged Load .rd: begin
+                        waitRead.enq(WaitReadResponse { rd: tagged Valid rd });
+                    end
+                    tagged Store .d: begin
+                        waitRead.enq(WaitReadResponse { rd: tagged Invalid });
+                        data = tagged Valid d;
+                    end
+                endcase
 
                 return DMemReq { addr: q.first.ea
-                               , data: case (q.first.store) matches
-                                     True:  tagged Valid q.first.value;
-                                     False: tagged Invalid;
-                                 endcase
+                               , data: data
                                };
             endmethod
         endinterface
         interface Put response;
             method Action put(Word resp);
-                busyResp.send();
 
                 waitRead.deq;
-                responseRegProbe <= waitRead.first.rd;
-                rwr.write(waitRead.first.rd, resp);
+                if (waitRead.first.rd matches tagged Valid .rd) begin
+                    busyResp.send();
+                    responseRegProbe <= rd;
+                    rwr.write(rd, resp);
+                    bypass.strobe(rd, resp);
+                end
             endmethod
         endinterface
     endinterface
 
 
     interface Put compute;
-        method put = q.enq;
+        method Action put(ComputeToMemory v);
+            busyPut.send();
+            q.enq(v);
+        endmethod
     endinterface
 
 endmodule

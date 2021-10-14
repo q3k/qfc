@@ -283,6 +283,11 @@ interface RegisterWriteMemory;
     method Action write(Register rd, Word value);
 endinterface
 
+interface RegisterWriteBypass;
+    (* always_ready *)
+    method Action strobe(Register ix, Word value);
+endinterface
+
 typedef enum {
     Add, Sub, And, Or, Xor, Shift, Select
 } AluOperationKind deriving (Bits);
@@ -326,13 +331,15 @@ typedef struct {
     AluOperationKind aluOpKind;
 } FetchToCompute deriving (Bits);
 
+typedef union tagged {
+    void Noop;
+    Word Store;
+    Register Load;
+} ComputeToMemoryOp deriving (Bits);
+
 typedef struct {
     Word ea;
-    Bool store;
-    // If 'store', the value to store at ea;
-    Word value;
-    // If not 'store', the register to which read ea.
-    Register rd;
+    ComputeToMemoryOp op;
 } ComputeToMemory deriving (Bits);
 
 interface ComputedPC;

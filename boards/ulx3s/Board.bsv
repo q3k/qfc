@@ -20,8 +20,8 @@ interface ESP32;
 endinterface
 
 (* synthesize *)
-module mkMemory(Lanai_Memory#(4096));
-    Lanai_Memory#(4096) inner <- mkBlockMemory("boards/ulx3s/bram.bin");
+module mkMemory(Lanai_Memory#(1024));
+    Lanai_Memory#(1024) inner <- mkBlockMemory("boards/ulx3s/bram.bin");
     interface dmem = inner.dmem;
     interface imem = inner.imem;
 endmodule
@@ -30,7 +30,7 @@ endmodule
 module mkTop (Top);
     GSR gsr <- mkGSR;
 
-    Lanai_Memory#(4096) mem <- mkMemory;
+    let mem <- mkMemory;
     Lanai_IFC cpu <- mkLanaiCPU;
 
     mkConnection(cpu.imem_client, mem.imem);

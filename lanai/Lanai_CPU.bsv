@@ -21,8 +21,9 @@ module mkLanaiCPU (Lanai_IFC);
     CPU_Fetch fetch <- mkCPUFetch( rf.fetchRead
                                 , compute.pc
                                 );
-   CPU_Memory memory <- mkCPUMemory( rf.memoryWrite
-                                  );
+    CPU_Memory memory <- mkCPUMemory( rf.memoryWrite
+                                   , compute.memoryBypass
+                                   );
 
     mkConnection(fetch.compute, compute.fetch);
     mkConnection(compute.memory, memory.compute);
