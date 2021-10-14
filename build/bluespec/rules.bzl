@@ -5,6 +5,7 @@ def _bluespec_toolchain_impl(ctx):
     toolchain_info = platform_common.ToolchainInfo(
         bscinfo = BscInfo(
             bsc = ctx.attr.bsc,
+            bluetcl = ctx.attr.bluetcl,
             verilog_lib = VerilogInfo(
                 sources = depset(ctx.files.verilog_lib),
             ),
@@ -19,6 +20,10 @@ bluespec_toolchain = rule(
             executable = True,
             cfg = "exec",
         ),
+        "bluetcl": attr.label(
+            executable = True,
+            cfg = "exec",
+        ),
         "verilog_lib": attr.label_list(
             allow_files = True,
         ),
@@ -27,7 +32,6 @@ bluespec_toolchain = rule(
 
 def _compile(ctx, src, dep_objs, output, mode, verilog_outputs=[], sim_outputs=[]):
     info = ctx.toolchains["@qfc//build/bluespec:toolchain_type"].bscinfo
-    bsc = info.bsc[DefaultInfo].files_to_run
 
     bdir = output.dirname
     pkg_path_set = {}
@@ -67,18 +71,23 @@ def _compile(ctx, src, dep_objs, output, mode, verilog_outputs=[], sim_outputs=[
         src.path,
     ]
 
+    _, _, input_manifests = ctx.resolve_command(tools = [info.bsc])
     ctx.actions.run(
         mnemonic = mnemonic,
-        executable = bsc,
+        executable = info.bsc.files_to_run,
         arguments = arguments,
         inputs = depset([ src ], transitive=[dep_objs]),
         outputs = sim_outputs + verilog_outputs + [ output ],
+        input_manifests = input_manifests,
+        use_default_shell_env = True,
+        env = {
+            "PATH": ctx.configuration.default_shell_env.get('PATH', ""),
+        },
     )
 
 
 def _library_inner(ctx):
     info = ctx.toolchains["@qfc//build/bluespec:toolchain_type"].bscinfo
-    bsc = info.bsc[DefaultInfo].files_to_run
 
     package_order = []
     package_to_src = {}
@@ -247,6 +256,7 @@ def _bluesim_test_impl(ctx):
     info = ctx.toolchains["@qfc//build/bluespec:toolchain_type"].bscinfo
     cc_toolchain = find_cpp_toolchain(ctx)
     bsc = info.bsc
+    bluetcl = info.bluetcl
 
     sim_objs = depset(
         [],
@@ -264,7 +274,7 @@ def _bluesim_test_impl(ctx):
         ] + [
             dep[BluespecInfo].data_files
             for dep in ctx.attr.deps
-        ],
+        ] + [ bluetcl.default_runfiles.files ],
     )
 
     pkg_path_set = {}
@@ -283,18 +293,22 @@ def _bluesim_test_impl(ctx):
     # information into bsc somehow. Maybe using a real linker?
     if cxx.endswith('/gcc'):
         cxx = cxx[:-2] + "++"
+    elif cxx.endswith('/cc'):
+        cxx = cxx[:-2] + "g++"
 
     ctx.actions.run(
         mnemonic = "BluespecSimLink",
         executable = ctx.executable._bscwrap,
         tools = [
-            bsc[DefaultInfo].files_to_run,
+            bsc.files_to_run
         ],
         inputs = depset(
             [],
-            transitive = [ bsc.files, sim_objs, sim_outputs ],
+            transitive = [ sim_objs, sim_outputs ],
         ),
         arguments = [
+            bsc.files_to_run.executable.path, cxx, cc_toolchain.strip_executable,
+            "--",
             "-p", ":".join(pkg_path),
             "-sim",
             "-simdir", test.dirname,
@@ -302,29 +316,36 @@ def _bluesim_test_impl(ctx):
             "-e",
             ctx.attr.top,
         ],
-        env = {
-            "CXX": cxx,
-            "STRIP": cc_toolchain.strip_executable,
-            "BSC": bsc[DefaultInfo].files_to_run.executable.path,
-            "PATH": ctx.configuration.default_shell_env.get('PATH', ""),
-        },
+        use_default_shell_env = True,
         outputs = [test, testSo]
     )
 
     wrapper = ctx.actions.declare_file(ctx.attr.name + ".wrap")
+    test_path = ctx.workspace_name + "/" + test.short_path
     ctx.actions.write(
         output = wrapper,
-        content = """#!/bin/sh
-            t="{}"
-            $t $@ >res 2>&1
-            cat res
-            if grep -q "Error:" res ; then
-                exit 1
-            fi
-            if grep -q "Dynamic assertion failed:" res ; then
-                exit 1
-            fi
-        """.format(test.short_path),
+        content = """#!/usr/bin/env bash
+# --- begin runfiles.bash initialization v2 ---
+# Copy-pasted from the Bazel Bash runfiles library v2.
+set -uo pipefail; f=bazel_tools/tools/bash/runfiles/runfiles.bash
+source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \\
+  source "$(grep -sm1 "^$f " "${RUNFILES_MANIFEST_FILE:-/dev/null}" | cut -f2- -d' ')" 2>/dev/null || \\
+  source "$0.runfiles/$f" 2>/dev/null || \\
+  source "$(grep -sm1 "^$f " "$0.runfiles_manifest" | cut -f2- -d' ')" 2>/dev/null || \\
+  source "$(grep -sm1 "^$f " "$0.exe.runfiles_manifest" | cut -f2- -d' ')" 2>/dev/null || \\
+  { echo>&2 "ERROR: cannot find $f"; exit 1; }; f=; set -e
+# --- end runfiles.bash initialization v2 --- """ + ("""
+export PATH="$(dirname $(rlocation bluespec/bluetcl)):$PATH"
+t="$(rlocation {})"
+$t $@ >res 2>&1
+cat res
+if grep -q "Error:" res ; then
+    exit 1
+fi
+if grep -q "Dynamic assertion failed:" res ; then
+    exit 1
+fi
+""".format(test_path)),
         is_executable = True,
     )
 

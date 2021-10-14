@@ -1,3 +1,6 @@
+build --host_platform=@io_tweag_rules_nixpkgs//nixpkgs/platforms:host
+build --incompatible_use_cc_configure_from_rules_cc
+build --host_crosstool_top=@local_config_cc//:toolchain
 build --platforms=//build/platforms:ulx3s_85f
 build --experimental_allow_unresolved_symlinks
 build --host_cxxopt='-std=c++17'

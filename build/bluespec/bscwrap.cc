@@ -10,11 +10,40 @@
 #include <string>
 
 int main(int argc, char **argv) {
-    auto bsc = std::getenv("BSC");
-    if (bsc == nullptr) {
-        std::cerr << "BSC must be set\n";
+    char **new_argv = new char*[argc];
+    int new_argv_ix = 0;
+
+    char *bsc = nullptr;
+    char *cxx = nullptr;
+    char *strip = nullptr;
+
+    for (int i = 1; i < argc; i++) {
+        if (new_argv_ix > 0) {
+            new_argv[new_argv_ix++] = argv[i];
+        } else {
+            if (std::string(argv[i]) == "--") {
+                new_argv_ix = 1;
+            } else {
+                switch (i) {
+                    case 1:
+                        bsc = argv[1];
+                        break;
+                    case 2:
+                        cxx = argv[i];
+                        break;
+                    case 3:
+                        strip = argv[i];
+                        break;
+                }
+            }
+        }
+    }
+    if (bsc == nullptr || cxx == nullptr || strip == nullptr) {
+        std::cerr << "Usage: " << argv[0] << " bsc cxx strip -- bsc args\n";
         return 1;
     }
+    new_argv[0] = bsc;
+    new_argv[new_argv_ix] = nullptr;
     
     auto tmp = std::getenv("TMPDIR");
     if (tmp == nullptr) {
@@ -27,18 +56,8 @@ int main(int argc, char **argv) {
     std::filesystem::remove_all(forest);
     std::filesystem::create_directory(forest);
 
-    std::map<std::string, std::string> links = {
-        {"c++", "CXX"},
-        {"strip", "STRIP"},
-    };
-    for (auto const& [k, v] : links) {
-        auto target = std::getenv(v.c_str());
-        if (target == nullptr) {
-            std::cerr << v << " must be set\n";
-            return 1;
-        }
-        std::filesystem::create_symlink(target, forest + "/" + k);
-    }
+    std::filesystem::create_symlink(cxx, forest + "/c++");
+    std::filesystem::create_symlink(strip, forest + "/strip");
 
     auto path = forest + ":" + (std::getenv("PATH") ? std::getenv("PATH") : "");
 
@@ -47,7 +66,7 @@ int main(int argc, char **argv) {
         nullptr,
     };
 
-    if (execvpe(bsc, argv, envp) == -1) {
+    if (execvpe(bsc, new_argv, envp) == -1) {
         std::cerr << "execvpe failed\n";
         return 1;
     }

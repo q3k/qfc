@@ -5,6 +5,12 @@ workspace(
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
+    name = "rules_cc",
+    urls = ["https://github.com/bazelbuild/rules_cc/releases/download/0.0.1/rules_cc-0.0.1.tar.gz"],
+    sha256 = "4dccbfd22c0def164c8f47458bd50e0c7148f3d92002cdb459c2a96a68498241",
+)
+
+http_archive(
     name = "io_tweag_rules_nixpkgs",
     strip_prefix = "rules_nixpkgs-81f61c4b5afcf50665b7073f7fce4c1755b4b9a3",
     urls = ["https://github.com/tweag/rules_nixpkgs/archive/81f61c4b5afcf50665b7073f7fce4c1755b4b9a3.tar.gz"],
@@ -14,30 +20,55 @@ http_archive(
 load("@io_tweag_rules_nixpkgs//nixpkgs:repositories.bzl", "rules_nixpkgs_dependencies")
 rules_nixpkgs_dependencies()
 
-load("@io_tweag_rules_nixpkgs//nixpkgs:nixpkgs.bzl", "nixpkgs_git_repository", "nixpkgs_package")
+load("@io_tweag_rules_nixpkgs//nixpkgs:nixpkgs.bzl", "nixpkgs_git_repository", "nixpkgs_package", "nixpkgs_cc_configure")
 
 nixpkgs_git_repository(
     name = "nixpkgs",
-    revision = "ea25862403b62189b0e4256d1a17ed611f0d88bf",
-    sha256 = "2a7a0e10461382470b1196f60d0ab173d090d0030526f517b1716e9cf318ef14",
+    revision = "71ec7f4ad20b5c4c4a14d2a09f6040ade87c257d",
+    sha256 = "f712f0586a3ffa693741ca1e62f26d366cc0f663041066a5b8f5606e930ff8b2",
+)
+
+nixpkgs_cc_configure(
+    name = "local_config_cc",
+    repository = "@nixpkgs//:default.nix",
 )
 
 nixpkgs_package(
     name = "bluespec",
     repositories = { "nixpkgs": "@nixpkgs//:default.nix" },
     build_file_content = """
-load("@qfc//build:utils.bzl", "external_binary_tool")
 load("@qfc//build/bluespec:rules.bzl", "bluespec_toolchain")
 
-external_binary_tool(
+sh_binary(
     name = "bsc",
-    bin = "bin/bsc",
-    deps = glob(["lib/**", "bin/core/**"]),
+    data = [
+        "bin/bsc"
+    ] + glob(["lib/**", "bin/core/**"]),
+    srcs = [
+        "@qfc//build/bluespec:bsc.sh",
+    ],
+    deps = [
+        "@bazel_tools//tools/bash/runfiles",
+    ],
+)
+
+sh_binary(
+    name = "bluetcl",
+    data = [
+        "bin/bluetcl"
+    ] + glob(["lib/**", "bin/core/**"]),
+    srcs = [
+        "@qfc//build/bluespec:bluetcl.sh",
+    ],
+    deps = [
+        "@bazel_tools//tools/bash/runfiles",
+    ],
 )
 
 bluespec_toolchain(
     name = "bsc_nixpkgs",
     bsc = ":bsc",
+    bluetcl = ":bluetcl",
     verilog_lib = glob(["lib/Verilog/*.v"], [
         "lib/Verilog/BRAM2.v",
         "lib/Verilog/BRAM2Load.v",
@@ -64,9 +95,9 @@ toolchain(
 
 nixpkgs_package(
     name = "yosysflow",
-    repositories = { "nixpkgs1": "@nixpkgs//:default.nix" },
+    repositories = { "nixpkgs2": "@nixpkgs//:default.nix" },
     nix_file_content = """
-with import <nixpkgs1> {}; symlinkJoin {
+with import <nixpkgs2> {}; symlinkJoin {
     name = "yosysflow";
     paths = with pkgs; [ yosys nextpnr trellis ];
 }

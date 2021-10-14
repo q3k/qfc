@@ -21,7 +21,8 @@ endinterface
 
 (* synthesize *)
 module mkMemory(Lanai_Memory#(1024));
-    Lanai_Memory#(1024) inner <- mkBlockMemory("boards/ulx3s/bram.bin");
+    // TODO(q3k): ... figure out how the fuck to unhardcode this.
+    Lanai_Memory#(1024) inner <- mkBlockMemory("bazel-out/k8-fastbuild/bin/boards/ulx3s/bram.bin");
     interface dmem = inner.dmem;
     interface imem = inner.imem;
 endmodule

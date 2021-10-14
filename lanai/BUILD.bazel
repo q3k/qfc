@@ -35,7 +35,18 @@ bluespec_library(
         ":Lanai",
     ],
     data = [
-        "bram.bin",
+        ":bram",
+    ],
+)
+
+genrule(
+    name = "bram",
+    tools = [
+        "//lanai/qasm",
+    ],
+    cmd = "$(location //lanai/qasm) $@",
+    outs = [
+        "bram.bin"
     ],
 )
 

@@ -11,3 +11,5 @@ cc_binary(
     ],
     visibility = [ "//visibility:public" ],
 )
+
+exports_files(["bluetcl.sh", "bsc.sh"])

@@ -2,6 +2,7 @@
 BscInfo = provider(
     fields = [
         "bsc",
+        "bluetcl",
         "verilog_lib",
     ],
 )

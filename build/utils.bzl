@@ -1,16 +1,12 @@
 def _external_binary_tool_impl(ctx):
+    bin_ = ctx.file.bin
+
     executable = ctx.actions.declare_file(ctx.attr.name + ".bin")
-    path = ctx.file.bin.path
-    strip = "external/"
-    if not path.startswith(strip):
-        fail("Unexpected path {}".format(path))
-    path = path[len(strip):]
+    path = executable.path + ".runfiles/" + ctx.workspace_name + "/" + ctx.file.bin.short_path
     ctx.actions.write(
         output = executable,
         content = """#!/bin/sh
-            sp="{}"
-            bin=$0.runfiles/$sp
-            exec $bin $@
+            exec "{}" $@
         """.format(path),
         is_executable = True,
     )

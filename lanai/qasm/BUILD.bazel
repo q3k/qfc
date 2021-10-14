@@ -1,0 +1,9 @@
+py_binary(
+    name = "qasm",
+    srcs = [
+        "qasm.py",
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
+)
