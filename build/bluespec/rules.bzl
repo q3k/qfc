@@ -44,6 +44,7 @@ def _compile(ctx, src, dep_objs, output, mode, verilog_outputs=[], sim_outputs=[
     arguments = [
         "-bdir", bdir,
         "-p", ":".join(pkg_path),
+        "-aggressive-conditions",
         "-q",
     ]
 

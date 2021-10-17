@@ -13,17 +13,21 @@ import CPU_Memory :: *;
 (* synthesize *)
 module mkLanaiCPU (Lanai_IFC);
     CPU_RegisterFile rf <- mkCPURegisterFile;
+    CPU_Fetch fetch <- mkCPUFetch( rf.fetchRead
+                                );
     CPU_Compute compute <- mkCPUCompute( rf.computeSource1
                                       , rf.computeSource2
                                       , rf.computeStatusSource
                                       , rf.computeWrite
+                                      , fetch.mispredictCompute
                                       );
-    CPU_Fetch fetch <- mkCPUFetch( rf.fetchRead
-                                , compute.pc
-                                );
     CPU_Memory memory <- mkCPUMemory( rf.memoryWrite
                                    , compute.memoryBypass
+                                   , fetch.mispredictMemory
                                    );
+    //, compute.pc
+    //, memory.pc
+    //);
 
     mkConnection(fetch.compute, compute.fetch);
     mkConnection(compute.memory, memory.compute);

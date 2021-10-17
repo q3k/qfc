@@ -35,19 +35,19 @@ module mkCPURegisterFile(CPU_RegisterFile);
             0: mkConstantReg(32'h00000000);
             1: mkConstantReg(32'hFFFFFFFF);
             2: mkConstantReg(32'hDEADBEEF);
+            4: mkConfigReg(32'h00004000);
             default: mkConfigReg(0);
         endcase;
     endfunction
     Vector#(32, Reg#(Word)) regs <- genWithM(makeRegs);
+    Reg#(Word) status <- mkReg(0);
 
-    WriteReq writeReqCompute1 <- mkWire;
-    WriteReq writeReqCompute2 <- mkWire;
+    WriteReq writeReqCompute <- mkWire;
     WriteReq writeReqMemory <- mkWire;
 
-    Vector #(3, WriteReq) writeReqs;
-    writeReqs[0] = writeReqCompute1;
-    writeReqs[1] = writeReqCompute2;
-    writeReqs[2] = writeReqMemory;
+    Vector #(2, WriteReq) writeReqs;
+    writeReqs[0] = writeReqCompute;
+    writeReqs[1] = writeReqMemory;
 
 
     Vector #(29, Register) writableRegisters;
@@ -81,7 +81,7 @@ module mkCPURegisterFile(CPU_RegisterFile);
     interface RegisterRead computeSource1 = makeRead;
     interface RegisterRead computeSource2 = makeRead;
     interface StatusWordRead computeStatusSource;
-        method StatusWord read = unpack(regs[pack(PS)]);
+        method StatusWord read = unpack(status);
     endinterface
 
     interface RegisterWriteCompute computeWrite;
@@ -91,12 +91,12 @@ module mkCPURegisterFile(CPU_RegisterFile);
 
             case (sw) matches
                 tagged Valid .swd: begin
-                    writeReqCompute1 <= tuple2(PS, pack(swd));
+                    status <= pack(swd);
                 end
             endcase
             case (rd) matches
                 tagged Valid .rdd: begin
-                    writeReqCompute2 <= rdd;
+                    writeReqCompute <= rdd;
                 end
             endcase
         endmethod

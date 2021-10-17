@@ -1,11 +1,15 @@
 package CPU_Defs;
 
+import GetPut :: *;
+
 typedef Bit#(32) Word;
 typedef Bit#(16) Half;
 typedef Bit#(8) Byte;
 
+typedef Bit#(4) Epoch;
+
 typedef enum {
-    R0, R1, PC, PS, R4, R5, R6, R7,
+    R0, R1, PC, R3, R4, R5, R6, R7,
     R8, R9, R10, R11, R12, R13, R14, R15,
     R16, R17, R18, R19, R20, R21, R22, R23,
     R24, R25, R26, R27, R28, R29, R30, R31
@@ -37,10 +41,15 @@ instance Bits#(StatusWord, 32);
 endinstance
 
 typedef union tagged {
-    InstRI  RI;
-    InstRR  RR;
-    InstRM  RM;
-    InstRRM RRM;
+    InstRI   RI;
+    InstRR   RR;
+    InstRM   RM;
+    InstRRM  RRM;
+    InstBR   BR;
+    InstSLS  SLS;
+    InstSLI  SLI;
+    InstSPLS SPLS;
+    Word Unknown;
 } Instruction deriving(FShow);
 
 instance Bits#(Instruction, 32);
@@ -77,53 +86,97 @@ instance Bits#(Instruction, 32);
                                         , memoryAccess: unpack(x[2:1])
                                         , zeroExtend: unpack(x[0])
                                         };
-            default: tagged RI InstRI   { operation: unpack(0)
-                                        , flags: unpack(0)
-                                        , high: unpack(0)
-                                        , destination: unpack(0)
-                                        , source: unpack(0)
-                                        , constant: unpack(0)
+            4'b1110: tagged BR InstBR   { condition: unpack({x[27:25], x[0]})
+                                        , constant: unpack(x[24:2])
+                                        , r: unpack(x[1])
                                         };
+            4'b1111: case (x[17:15]) matches
+                3'b0??: tagged SLS  InstSLS  { destination: unpack(x[27:23])
+                                             , address: unpack({x[22:18], x[15:0]})
+                                             , s: unpack(x[16])
+                                             };
+                3'b10?: tagged SLI  InstSLI  { destination: unpack(x[27:23])
+                                             , address: unpack({x[22:18], x[15:0]})
+                                             };
+                3'b110: tagged SPLS InstSPLS { destination: unpack(x[27:23])
+                                             , source1: unpack(x[22:18])
+                                             , y: unpack(x[14])
+                                             , s: unpack(x[13])
+                                             , e: unpack(x[12])
+                                             , p: unpack(x[11])
+                                             , q: unpack(x[10])
+                                             , constant: unpack(x[9:0])
+                                             };
+                default: tagged Unknown x;
+            endcase
+            default: tagged Unknown x;
         endcase;
     endfunction
     function Bit#(32) pack(Instruction i);
         return case (i) matches
-            tagged RI .ri:   { 1'b0
-                             , pack(ri.operation)
-                             , pack(ri.destination)
-                             , pack(ri.source)
-                             , pack(ri.flags)
-                             , pack(ri.high)
-                             , pack(ri.constant)
-                             };
-            tagged RR .rr:   { 4'b1100
-                             , pack(rr.destination)
-                             , pack(rr.source1)
-                             , pack(rr.flags)
-                             , pack(rr.condition)[0]
-                             , pack(rr.source2)
-                             , pack(rr.operation)
-                             , pack(rr.condition)[3:1]
-                             };
-            tagged RM .rm:   { 3'b100
-                             , pack(rm.store)
-                             , pack(rm.destination)
-                             , pack(rm.source)
-                             , pack(rm.p)
-                             , pack(rm.q)
-                             , pack(rm.constant)
-                             };
-            tagged RRM .rrm: { 3'b101
-                             , pack(rrm.store)
-                             , pack(rrm.destination)
-                             , pack(rrm.source1)
-                             , pack(rrm.p)
-                             , pack(rrm.q)
-                             , pack(rrm.source2)
-                             , pack(rrm.operation)
-                             , pack(rrm.memoryAccess)
-                             , pack(rrm.zeroExtend)
-                             };
+            tagged RI .ri:     { 1'b0
+                               , pack(ri.operation)
+                               , pack(ri.destination)
+                               , pack(ri.source)
+                               , pack(ri.flags)
+                               , pack(ri.high)
+                               , pack(ri.constant)
+                               };
+            tagged RR .rr:     { 4'b1100
+                               , pack(rr.destination)
+                               , pack(rr.source1)
+                               , pack(rr.flags)
+                               , pack(rr.condition)[0]
+                               , pack(rr.source2)
+                               , pack(rr.operation)
+                               , pack(rr.condition)[3:1]
+                               };
+            tagged RM .rm:     { 3'b100
+                               , pack(rm.store)
+                               , pack(rm.destination)
+                               , pack(rm.source)
+                               , pack(rm.p)
+                               , pack(rm.q)
+                               , pack(rm.constant)
+                               };
+            tagged RRM .rrm:   { 3'b101
+                               , pack(rrm.store)
+                               , pack(rrm.destination)
+                               , pack(rrm.source1)
+                               , pack(rrm.p)
+                               , pack(rrm.q)
+                               , pack(rrm.source2)
+                               , pack(rrm.operation)
+                               , pack(rrm.memoryAccess)
+                               , pack(rrm.zeroExtend)
+                               };
+            tagged BR .br:     { 4'b1110
+                               , pack(br.condition)[3:1]
+                               , pack(br.constant)
+                               , pack(br.r)
+                               , pack(br.condition)[0]
+                               };
+            tagged SLS .sls:   { 4'b1111
+                               , pack(sls.destination)
+                               , pack(sls.address[20:16])
+                               , 1'b0
+                               , pack(sls.s)
+                               , pack(sls.address[15:0])
+                               };
+            tagged SLI .sli:   { 4'b1111
+                               , pack(sli.destination)
+                               , pack(sli.address[20:16])
+                               , 2'b10
+                               , pack(sli.address[15:0])
+                               };
+            tagged SPLS. spls: { 4'b1111
+                               , pack(spls.destination)
+                               , pack(spls.source1)
+                               , 3'b110
+                               , pack(spls.y), pack(spls.s), pack(spls.e)
+                               , pack(spls.p), pack(spls.q)
+                               , pack(spls.constant)
+                               };
         endcase;
     endfunction
 endinstance
@@ -167,10 +220,38 @@ typedef struct {
     Bool zeroExtend;
 } InstRRM deriving (FShow);
 
+typedef struct {
+    Condition condition;
+    Bit#(23) constant;
+    Bool r;
+} InstBR deriving (FShow);
+
+typedef struct {
+    Register destination;
+    Bit#(21) address;
+    Bool s;
+} InstSLS deriving (FShow);
+
+typedef struct {
+    Register destination;
+    Bit#(21) address;
+} InstSLI deriving (FShow);
+
+typedef struct {
+    Register destination;
+    Register source1;
+    Bool y;
+    Bool s;
+    Bool e;
+    Bool p;
+    Bool q;
+    Bit#(10) constant;
+} InstSPLS deriving (FShow);
+
 typedef enum { T  = 4'b0000 // true
              , F  = 4'b0001 // false
              , HI = 4'b0010 // high
-             , LO = 4'b0011 // low or same
+             , LS = 4'b0011 // low or same
              , CC = 4'b0100 // carry cleared
              , CS = 4'b0101 // carrry set
              , NE = 4'b0110 // not equal
@@ -190,7 +271,7 @@ function Bool evaluateCondition(Condition cond, StatusWord sw);
         T: True;
         F: False;
         HI: (sw.carry && !sw.zero);
-        LO: (!sw.carry && sw.zero);
+        LS: (!sw.carry || sw.zero);
         CC: !sw.carry;
         CS: sw.carry;
         NE: !sw.zero;
@@ -339,11 +420,27 @@ typedef union tagged {
 
 typedef struct {
     Word ea;
+    Word pc;
     ComputeToMemoryOp op;
+    DMemReqWidth width;
 } ComputeToMemory deriving (Bits);
 
-interface ComputedPC;
-    method Word get;
-endinterface
+typedef struct {
+    Word pc;
+    Word opc;
+} Misprediction deriving (Bits, FShow);
+
+typedef Put #(Misprediction) MispredictReport;
+
+typedef enum {
+    Word,
+    HalfWord,
+    Byte
+} DMemReqWidth deriving (Bits);
+
+//interface ComputedPC;
+//    (* always_ready *)
+//    method Maybe#(Word) get;
+//endinterface
 
 endpackage

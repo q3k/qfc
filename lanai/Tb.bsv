@@ -16,8 +16,8 @@ module mkTb (Empty);
 
     Reg#(int) i <- mkReg(0);
     rule testFetch;
-        if (i > 300) begin
-            $finish;
+        if (i > 3000) begin
+            mem.dump;
         end
         i <= i + 1;
         //$display("counter:", cpu.readPC);

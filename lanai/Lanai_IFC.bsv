@@ -5,11 +5,14 @@ import ClientServer :: *;
 
 import CPU_Defs :: *;
 
-export Word, Lanai_IFC (..), DMemReq (..);
+export Word, Lanai_IFC (..), DMemReq (..), DMemReqWidth (..);
 
 typedef struct {
     Word addr;
     Maybe#(Word) data;
+    DMemReqWidth width;
+    Bool spurious;
+    Word pc;
 } DMemReq deriving (Bits);
 
 interface Lanai_IFC;
