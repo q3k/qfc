@@ -22,11 +22,17 @@ endinterface
 module mkCPUFetch #( RegisterRead pcRead
                    ) (CPU_Fetch);
 
+    Reg#(Word) cPredictCount <- mkConfigReg(0);
+    Reg#(Word) cMispredictOkCount <- mkConfigReg(0);
+    Reg#(Word) cMispredictLagCount <- mkConfigReg(0);
+    Reg#(Word) cMispredictErrorCount <- mkConfigReg(0);
+
     let pcProbe <- mkProbe;
     let wantProbe <- mkProbe;
     let fetchProbe <- mkProbe;
     let putProbe <- mkProbe;
     let getProbe <- mkProbe;
+    let mispredictErrorProbe <- mkProbe;
 
     FIFOF#(FetchToCompute) out <- mkBypassFIFOF;
     Reg#(Word) cycle <- mkReg(0);
@@ -54,6 +60,10 @@ module mkCPUFetch #( RegisterRead pcRead
         fetchProbe <= fetchPC;
     endrule
 
+    rule mispredictProbeUpdate;
+        mispredictErrorProbe <= cMispredictErrorCount;
+    endrule
+
     interface Get compute;
         method ActionValue#(FetchToCompute) get() if (cycle != 0);
             fetched.deq;
@@ -73,13 +83,23 @@ module mkCPUFetch #( RegisterRead pcRead
             let sched = True;
             let nextPC = pc + 4;
             if (override matches tagged Valid .mispredict) begin
-                //$display("%d: mispredict:", cycle, fshow(mispredict));
+                $display("%d: mispredict:", cycle, fshow(mispredict));
 
                 if (mispredict.pc != wantPC) begin
                     if (mispredict.opc == pc+4) begin
-                        //$display("%d: pc miss, %x -> %x", cycle, pc, mispredict.pc);
+                        cMispredictOkCount <= cMispredictOkCount + 1;
+                        $display("%d: pc miss, %x -> %x", cycle, pc, mispredict.pc);
+                    end else if (mispredict.opc == pc) begin
+                        cMispredictLagCount <= cMispredictLagCount + 1;
+                        $display("%d: pc Miss, %x -> %x", cycle, pc, mispredict.pc);
+                        sched = False;
+                    end else if (mispredict.opc == pc-4) begin
+                        cMispredictLagCount <= cMispredictLagCount + 1;
+                        $display("%d: pc Miss, %x -> %x", cycle, pc, mispredict.pc);
+                        sched = False;
                     end else begin
-                        //$display("%d: pc MISS, %x -> %x", cycle, pc, mispredict.pc);
+                        cMispredictErrorCount <= cMispredictErrorCount + 1;
+                        $display("%d: pc MISS, %x -> %x", cycle, pc, mispredict.pc);
                         sched = False;
                     end
                     nextPC = mispredict.pc;
@@ -89,6 +109,7 @@ module mkCPUFetch #( RegisterRead pcRead
             fetchPC <= nextPC;
 
             if (nextPC == pc + 4) begin
+                cPredictCount <= cPredictCount + 1;
                 //$display("%d: pc okay, %x", cycle, pc);
             end
 
