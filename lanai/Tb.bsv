@@ -8,16 +8,17 @@ import Lanai_Memory :: *;
 
 (* synthesize *)
 module mkTb (Empty);
-    Lanai_Memory#(4096) mem <- mkBlockMemory("lanai/bram.bin");
+    Lanai_BlockRAM#(4096) bram <- mkBlockMemory("lanai/bram.bin");
     Lanai_IFC cpu <- mkLanaiCPU;
 
-    mkConnection(cpu.imem_client, mem.imem);
-    mkConnection(cpu.dmem_client, mem.dmem);
+    mkConnection(cpu.imem_client, bram.memory.imem);
+    mkConnection(cpu.dmem_client, bram.memory.dmem);
 
     Reg#(int) i <- mkReg(0);
     rule testFetch;
-        if (i > 3000) begin
-            mem.dump;
+        if (i > 5000) begin
+            //bram.dump;
+            $finish(0);
         end
         i <= i + 1;
         //$display("counter:", cpu.readPC);

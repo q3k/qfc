@@ -7,7 +7,7 @@ bluespec_library(
         "Board.bsv",
     ],
     deps = [
-        "//lanai:Lanai",
+        "//lanai:cpu",
         "//fpga:ECP5",
     ],
     synthesize = {
