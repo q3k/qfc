@@ -1,0 +1,25 @@
+load("//build/bluespec:rules.bzl", "bluespec_library")
+load("//build/synthesis:rules.bzl", "yosysflow_bitstream")
+
+bluespec_library(
+    name = "Board",
+    srcs = [
+        "Board.bsv",
+    ],
+    deps = [
+        "//fpga:ECP5",
+        "//hub75",
+    ],
+    synthesize = {
+        "Board": ["mkTop"],
+    },
+)
+
+yosysflow_bitstream(
+    name = 'colorlight-70',
+    deps = [
+        ":Board",
+    ],
+    top = "mkTop",
+    constraints = "colorlight-70.lpf",
+)
