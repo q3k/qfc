@@ -11,6 +11,12 @@ interface Top;
     (* always_enabled *)
     method Bit#(8) led;
 
+    (* always_enabled *)
+    method Bool dutClock;
+
+    (* always_enabled *)
+    method Bool dutReset;
+
     interface ESP32 wifi;
 endinterface
 
@@ -36,11 +42,38 @@ module mkTop (Top);
     mkConnection(cpu.imem_client, mem.memory.imem);
     mkConnection(cpu.dmem_client, mem.memory.dmem);
 
+    Reg#(Bit#(TLog#(25))) dutClockCounter <- mkReg(0);
+    Reg#(Bool) dutClockValue <- mkReg(False);
+
+    Reg#(Bit#(8)) dutResetCounter <- mkReg(0);
+
+    rule dut_clock_up;
+        if (dutClockCounter == 24) begin
+            dutClockCounter <= 0;
+            dutClockValue <= !dutClockValue;
+        end else begin
+            dutClockCounter <= dutClockCounter + 1;
+        end
+    endrule
+
+    rule dut_reset_up;
+        if (dutResetCounter != 255) begin
+            dutResetCounter <= dutResetCounter + 1;
+        end
+    endrule
+
     interface ESP32 wifi;
         method gpio0 = 1;
     endinterface
 
     method led = cpu.readPC[7:0];
+
+    method dutClock = dutClockValue;
+
+    method Bool dutReset;
+        return (dutResetCounter == 255);
+    endmethod
+
 endmodule
 
 endpackage
