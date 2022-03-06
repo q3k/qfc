@@ -1,0 +1,33 @@
+load("//build/bluespec:rules.bzl", "bluespec_library", "bluesim_test")
+
+bluespec_library(
+    name = "wishbone",
+    srcs = [
+        "Wishbone.bsv",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+bluespec_library(
+    name = "Tb",
+    srcs = [
+        "Tb.bsv",
+    ],
+    synthesize = {
+        "Tb": ["mkTb", "mkTbInner", "mkBlock"],
+    },
+    split_if = True,
+    deps = [
+        ":wishbone",
+    ],
+)
+
+
+bluesim_test(
+    name = "testbench",
+    deps = [
+        ":Tb",
+    ],
+    top = "mkTb",
+)
+
