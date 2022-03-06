@@ -1,0 +1,62 @@
+load("//build/bluespec:rules.bzl", "bluespec_library", "bluesim_test")
+
+bluespec_library(
+    name = "hub75",
+    srcs = [
+        "Hub75.bsv",
+    ],
+    deps = [
+        ":Gamma",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+bluespec_library(
+    name = "Tb",
+    srcs = [
+        "Tb.bsv",
+    ],
+    synthesize = {
+        "Tb": ["mkTb"],
+    },
+    deps = [
+        ":hub75",
+    ],
+)
+
+
+bluesim_test(
+    name = "testbench",
+    deps = [
+        ":Tb",
+    ],
+    top = "mkTb",
+)
+
+py_binary(
+    name = "gammagen",
+    srcs = [
+        "gammagen.py",
+    ],
+)
+
+genrule(
+    name = "gammagen_run",
+    tools = [
+        ":gammagen",
+    ],
+    outs = [
+        "Gamma.bsv",
+    ],
+    cmd = "$(location :gammagen) $@",
+)
+
+bluespec_library(
+    name = "Gamma",
+    srcs = [
+        ":Gamma.bsv",
+    ],
+    synthesize = {
+        "Gamma": ["mkGammaExpand"],
+    },
+)
