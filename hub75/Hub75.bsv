@@ -1,5 +1,13 @@
 package Hub75;
 
+// This package implements an interface/driver for HUB75 LED panels. It's a
+// work in progress, but currently it's a self-contained sender which retrieves
+// data from a Coordinates/PixelData server (which can be plugged into eg. DRAM).
+//
+// In the future this might get split into a more modular design where a driver
+// can be fed data and control signals from the outside, with the full 'RAMDAC'
+// style design being a wrapper around that.
+
 import GetPut :: *;
 import ClientServer :: *;
 import FIFO :: *;
