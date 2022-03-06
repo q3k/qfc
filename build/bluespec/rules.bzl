@@ -47,6 +47,8 @@ def _compile(ctx, src, dep_objs, output, mode, verilog_outputs=[], sim_outputs=[
         "-aggressive-conditions",
         "-q",
     ]
+    if ctx.attr.split_if:
+        arguments.append("-split-if")
 
     mnemonic = ""
     if mode == "verilog":
@@ -248,6 +250,7 @@ bluespec_library = rule(
             allow_files = True,
         ),
         "synthesize": attr.string_list_dict(),
+        "split_if": attr.bool(),
     },
     toolchains = ["@qfc//build/bluespec:toolchain_type"]
 )
