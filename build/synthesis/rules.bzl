@@ -42,10 +42,14 @@ def _get_flags(ctx):
         ]
         if _is_set(ctx, ctx.attr._ecp5_lfe5u_12f):
             nextpnr_flags.append("--12k")
+        if _is_set(ctx, ctx.attr._ecp5_lfe5u_25f):
+            nextpnr_flags.append("--25k")
         if _is_set(ctx, ctx.attr._ecp5_lfe5u_85f):
             nextpnr_flags.append("--85k")
         if _is_set(ctx, ctx.attr._ecp5_cabga381):
             nextpnr_flags += ["--package", "CABGA381"]
+        if _is_set(ctx, ctx.attr._ecp5_cabga256):
+            nextpnr_flags += ["--package", "CABGA256"]
 
         return struct(
             yosys_synth_command = "synth_ecp5 -abc9 -nowidelut -top %TOP%",
@@ -118,18 +122,19 @@ def _yosysflow_bitstream_impl(ctx):
     )
 
     packed = ctx.actions.declare_file(ctx.attr.name + ".bit")
+    svf = ctx.actions.declare_file(ctx.attr.name + ".svf")
 
     ctx.actions.run(
         mnemonic = "BitstreamPack",
         executable = packer,
-        arguments = [ unpacked.path, packed.path ],
+        arguments = [ unpacked.path, packed.path, "--svf", svf.path ],
         inputs = [ unpacked ],
-        outputs = [ packed ],
+        outputs = [ packed, svf ],
     )
 
     return [
         DefaultInfo(
-            files = depset([packed]),
+            files = depset([packed, svf]),
         )
     ]
 
@@ -148,8 +153,10 @@ yosysflow_bitstream = rule(
         "_fpga_family_ecp5": attr.label(default="@qfc//build/platforms:ecp5"),
         "_fpga_family_ice40": attr.label(default="@qfc//build/platforms:ice40"),
         "_ecp5_lfe5u_12f": attr.label(default="@qfc//build/platforms:LFE5U_12F"),
+        "_ecp5_lfe5u_25f": attr.label(default="@qfc//build/platforms:LFE5U_25F"),
         "_ecp5_lfe5u_85f": attr.label(default="@qfc//build/platforms:LFE5U_85F"),
         "_ecp5_cabga381": attr.label(default="@qfc//build/platforms:CABGA381"),
+        "_ecp5_cabga256": attr.label(default="@qfc//build/platforms:CABGA256"),
     },
     toolchains = ["@qfc//build/synthesis:toolchain_type"],
 )
