@@ -45,12 +45,7 @@ int main(int argc, char **argv) {
     new_argv[0] = bsc;
     new_argv[new_argv_ix] = nullptr;
     
-    auto tmp = std::getenv("TMPDIR");
-    if (tmp == nullptr) {
-        std::cerr << "TMPDIR must be set\n";
-        return 1;
-    }
-
+    auto tmp = std::filesystem::current_path();
     auto forest = std::string(tmp) + "/bscwrap";
 
     std::filesystem::remove_all(forest);
