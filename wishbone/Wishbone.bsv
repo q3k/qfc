@@ -10,11 +10,13 @@ package Wishbone;
 
 import GetPut :: *;
 import ClientServer :: *;
+import Connectable :: *;
 import FIFO :: *;
 import SpecialFIFOs :: *;
 import Connectable :: *;
 import CBus :: *;
 import Probe :: *;
+import TieOff :: *;
 
 interface Slave#( numeric type datSize
                 , numeric type adrSize
@@ -56,6 +58,65 @@ typedef struct {
                 )
 deriving (Bits, FShow);
 
+instance TieOff#(Slave#(a, b, c));
+    module mkTieOff(Slave#(a,b,c) ifc, Empty inf);
+        rule noRequest;
+            ifc.request(False, False, 0, 0, 0, False);
+        endrule
+    endmodule
+endinstance
+
+interface Master#( numeric type datSize
+                 , numeric type adrSize
+                 , numeric type selSize
+                 );
+  (* always_ready, result="cyc_o" *)
+  method Bool cyc;
+  (* always_ready, result="stb_o" *)
+  method Bool stb;
+  (* always_ready, result="adr_o" *)
+  method Bit#(adrSize) adr;
+  (* always_ready, result="dat_o" *)
+  method Bit#(datSize) dat;
+  (* always_ready, result="sel_o" *)
+  method Bit#(selSize) sel;
+  (* always_ready, result="we_o" *)
+  method Bool we;
+
+  (* always_ready, always_enabled, prefix="" *)
+  method Action response((* port="ack_i" *) Bool ack
+                        ,(* port="err_i" *) Bool err
+                        ,(* port="rty_i" *) Bool rty
+                        ,(* port="dat_i" *) Bit#(datSize) dat
+                        );
+endinterface
+
+instance TieOff#(Master#(a, b, c));
+    module mkTieOff(Master#(a,b,c) ifc, Empty inf);
+        rule noResponse;
+            ifc.response(False, False, False, 0);
+        endrule
+    endmodule
+endinstance
+
+instance Connectable#(Master#(a, b, c), Slave#(a, b, c));
+    module mkConnection#(Master#(a, b, c) m, Slave#(a, b, c) s) (Empty);
+        rule m2s;
+            s.request(m.cyc, m.stb, m.adr, m.dat, m.sel, m.we);
+        endrule
+        rule s2m;
+            m.response(s.ack, s.err, s.rty, s.dat);
+        endrule
+    endmodule
+endinstance
+
+instance Connectable#(Slave#(a, b, c), Master#(a, b, c));
+    module mkConnection#(Slave#(a, b, c) s, Master#(a, b, c) m) (Empty);
+         mkConnection(m, s);
+    endmodule
+endinstance
+
+
 interface SlaveConnector#( numeric type datSize
                          , numeric type adrSize
                          , numeric type selSize
@@ -67,6 +128,11 @@ endinterface
 
 module mkSyncSlaveConnector (SlaveConnector#(datSize, adrSize, selSize));
     let inner <- mkSlaveConnector(True);
+    return inner;
+endmodule
+
+module mkAsyncSlaveConnector (SlaveConnector#(datSize, adrSize, selSize));
+    let inner <- mkSlaveConnector(False);
     return inner;
 endmodule
 
@@ -154,6 +220,70 @@ module mkSlaveConnector#(Bool sync) (SlaveConnector#(datSize, adrSize, selSize))
     interface Client client;
         interface Get request = fifoToGet(fReq);
         interface Put response = fifoToPut(fRes);
+    endinterface
+endmodule
+
+interface MasterConnector#( numeric type datSize
+                          , numeric type adrSize
+                          , numeric type selSize
+                          );
+    interface Master#(datSize, adrSize, selSize) master;
+    interface Server#(SlaveRequest#(datSize, adrSize, selSize), SlaveResponse#(datSize)) server;
+endinterface
+
+module mkMasterConnector (MasterConnector#(datSize, adrSize, selSize));
+    FIFO#(SlaveRequest#(datSize, adrSize, selSize)) fReq <- mkPipelineFIFO;
+    FIFO#(SlaveResponse#(datSize)) fRes <- mkBypassFIFO;
+    Reg#(Maybe#(SlaveRequest#(datSize, adrSize, selSize))) outgoing <- mkDWire(tagged Invalid);
+    Reg#(Maybe#(Bit#(datSize))) incoming <- mkDWire(tagged Invalid);
+
+    rule process_outgoing;
+        outgoing <= tagged Valid fReq.first();
+    endrule
+
+    rule process_incoming (incoming matches tagged Valid .data);
+        let pending = fReq.first();
+        fReq.deq();
+        
+        let resp = SlaveResponse { readData: tagged Invalid };
+        if (pending.writeData matches tagged Invalid) begin
+            resp.readData = tagged Valid data;
+        end
+        fRes.enq(resp);
+    endrule
+
+    interface Master master;
+        method cyc = isValid(outgoing);
+        method stb = isValid(outgoing);
+        method adr = case (outgoing) matches
+            tagged Invalid: 0;
+            tagged Valid .o: o.address;
+        endcase;
+        method dat = case (outgoing) matches
+            tagged Invalid: 0;
+            tagged Valid .o: fromMaybe(0, o.writeData);
+        endcase;
+        method sel = case (outgoing) matches
+            tagged Invalid: 0;
+            tagged Valid .o: o.select;
+        endcase;
+        method we = case (outgoing) matches
+            tagged Invalid: False;
+            tagged Valid .o: isValid(o.writeData);
+        endcase;
+
+        method Action response(Bool ack, Bool err, Bool rty, Bit#(datSize) dat2);
+            case (tuple3(ack, err, rty)) matches
+                { True, False, False }: incoming <= tagged Valid dat2;
+                { False, False, False }: begin end
+                default: incoming <= tagged Valid 0;
+            endcase
+        endmethod
+    endinterface
+
+    interface Server server;
+        interface Put request = fifoToPut(fReq);
+        interface Get response = fifoToGet(fRes);
     endinterface
 endmodule
 

@@ -1,4 +1,4 @@
-package Tb;
+package TbCBus;
 
 import Assert :: *;
 import CBus :: *;
@@ -38,7 +38,6 @@ DCAddr cfg_status_error = DCAddr { a: cfgStatusAddr, o: 1 };
 interface Block;
 endinterface
 
-(* synthesize *)
 module [Module] mkBlock(IWithCBus#(DCBus, Block));
     let ifc <- exposeCBusIFC(mkBlockInternal);
     return ifc;
@@ -64,7 +63,7 @@ module [DModWithCBus] mkBlockInternal(Block);
 endmodule
 
 (* synthesize *)
-module mkTbInner(Wishbone::Slave#(32, 24, 4));
+module mkTbCBusInner(Wishbone::Slave#(32, 24, 4));
     IWithCBus#(DCBus,Block) dut <- mkBlock;
     Wishbone::Slave#(32, 24, 4) cbusSlave <- mkCBusBridge(dut.cbus_ifc);
 
@@ -99,8 +98,8 @@ function Stmt doWrite(Wishbone::Slave#(32, 24, 4) slave, Reg#(Bool) ack, Bit#(32
 endfunction
 
 (* synthesize *)
-module mkTb(Empty);
-    Wishbone::Slave#(32, 24, 4) slave <- mkTbInner;
+module mkTbCBus(Empty);
+    Wishbone::Slave#(32, 24, 4) slave <- mkTbCBusInner;
 
     Reg#(Bool) ack <- mkReg(False);
     Reg#(Bit#(32)) data <- mkReg(0);

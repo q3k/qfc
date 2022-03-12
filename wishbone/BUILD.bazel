@@ -9,12 +9,14 @@ bluespec_library(
 )
 
 bluespec_library(
-    name = "Tb",
+    name = "testbenches",
     srcs = [
-        "Tb.bsv",
+        "TbCBus.bsv",
+        "TbConnectors.bsv",
     ],
     synthesize = {
-        "Tb": ["mkTb", "mkTbInner", "mkBlock"],
+        "TbCBus": ["mkTbCBus", "mkTbCBusInner"],
+        "TbConnectors": ["mkTbConnectors"],
     },
     split_if = True,
     deps = [
@@ -22,12 +24,19 @@ bluespec_library(
     ],
 )
 
+bluesim_test(
+    name = "test_cbus",
+    deps = [
+        ":testbenches",
+    ],
+    top = "mkTbCBus",
+)
 
 bluesim_test(
-    name = "testbench",
+    name = "test_connectors",
     deps = [
-        ":Tb",
+        ":testbenches",
     ],
-    top = "mkTb",
+    top = "mkTbConnectors",
 )
 
