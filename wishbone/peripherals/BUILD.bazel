@@ -1,0 +1,23 @@
+load("//build/bluespec:rules.bzl", "bluespec_library", "bluesim_test")
+
+bluespec_library(
+    name = "spi",
+    srcs = [
+        "SPI.bsv",
+    ],
+    synthesize = {
+        "SPI": ["mkTbSPIController"],
+    },
+    deps = [
+        "//wishbone",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+bluesim_test(
+    name = "test_spi",
+    deps = [
+        ":spi",
+    ],
+    top = "mkTbSPIController",
+)
