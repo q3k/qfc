@@ -2,6 +2,7 @@ package Lanai_IFC;
 
 import GetPut :: *;
 import ClientServer :: *;
+import Wishbone :: *;
 
 import CPU_Defs :: *;
 
@@ -18,6 +19,7 @@ typedef struct {
 interface Lanai_IFC;
     interface Client #(DMemReq, Word) dmem_client;
     interface Client #(Word, Word) imem_client;
+    interface Wishbone::Master #(32, 32, 4) sysmem_client;
     method Word readPC;
 endinterface
 

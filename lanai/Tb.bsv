@@ -1,6 +1,8 @@
 package Tb;
 
 import Connectable :: *;
+import Wishbone :: *;
+import TieOff :: *;
 
 import Lanai_IFC :: *;
 import Lanai_CPU :: *;
@@ -13,6 +15,7 @@ module mkTb (Empty);
 
     mkConnection(cpu.imem_client, bram.memory.imem);
     mkConnection(cpu.dmem_client, bram.memory.dmem);
+    mkTieOff(cpu.sysmem_client);
 
     Reg#(int) i <- mkReg(0);
     rule testFetch;

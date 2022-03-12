@@ -7,6 +7,9 @@ bluespec_library(
         "Lanai_IFC.bsv",
         "Lanai_Memory.bsv",
     ],
+    deps = [
+        "//wishbone",
+    ],
     visibility = [
         "//visibility:public",
     ],

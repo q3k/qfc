@@ -2,6 +2,7 @@ package Lanai_CPU;
 
 import GetPut :: *;
 import Connectable :: *;
+import Wishbone :: *;
 
 import Lanai_IFC :: *;
 import CPU_Defs :: *;
@@ -25,18 +26,18 @@ module mkLanaiCPU (Lanai_IFC);
                                    , compute.memoryBypass
                                    , fetch.mispredictMemory
                                    );
-    //, compute.pc
-    //, memory.pc
-    //);
 
     mkConnection(fetch.compute, compute.fetch);
     mkConnection(compute.memory, memory.compute);
+
+    Wishbone::MasterConnector#(32, 32, 4) sysmemConnector <- mkMasterConnector;
 
     method Word readPC;
         return rf.debug.read(R7);
     endmethod
     interface imem_client = fetch.imem;
     interface dmem_client = memory.dmem;
+    interface sysmem_client = sysmemConnector.master;
 endmodule
 
 endpackage
