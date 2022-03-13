@@ -4,6 +4,7 @@ bluespec_library(
     name = "wishbone",
     srcs = [
         "Wishbone.bsv",
+        "WishboneCrossbar.bsv",
     ],
     visibility = ["//visibility:public"],
 )
@@ -13,10 +14,12 @@ bluespec_library(
     srcs = [
         "TbCBus.bsv",
         "TbConnectors.bsv",
+        "TbCrossbar.bsv",
     ],
     synthesize = {
         "TbCBus": ["mkTbCBus", "mkTbCBusInner"],
         "TbConnectors": ["mkTbConnectors"],
+        "TbCrossbar": ["mkTbCrossbar"],
     },
     split_if = True,
     deps = [
@@ -40,3 +43,10 @@ bluesim_test(
     top = "mkTbConnectors",
 )
 
+bluesim_test(
+    name = "test_crossbar",
+    deps = [
+        ":testbenches",
+    ],
+    top = "mkTbCrossbar",
+)
