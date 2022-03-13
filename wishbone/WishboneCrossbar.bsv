@@ -50,6 +50,13 @@ module mkCrossbar#(function Maybe#(DecodedAddr#(downstreamNumer, adrSize)) decod
         for (Integer d = 0; d < valueOf(downstreamNum); d = d + 1) begin
             rule request_route(canRoute(u, d));
                 let req = upstreamRequests[u].first;
+                let route = decoder(req.address);
+                case (route) matches
+                    tagged Invalid: begin end
+                    tagged Valid .a: begin
+                        req.address = a.address;
+                    end
+                endcase
                 upstreamRequests[u].deq();
                 downstreamConnectors[d].server.request.put(req);
                 downstreamPending[d].enq(fromInteger(u));
@@ -59,13 +66,14 @@ module mkCrossbar#(function Maybe#(DecodedAddr#(downstreamNumer, adrSize)) decod
     end
 
     for (Integer d = 0; d < valueOf(downstreamNum); d = d + 1) begin
-        rule response_route;
-            let res <- downstreamConnectors[d].server.response.get();
-            let u = downstreamPending[d].first;
-            downstreamPending[d].deq();
-            $display("Crossbar: res %02d <- %02d", u, d);
-            upstreamConnectors[u].client.response.put(res);
-        endrule
+        for (Integer u = 0; u < valueOf(upstreamNum); u = u + 1) begin
+            rule response_route(downstreamPending[d].first == fromInteger(u));
+                let res <- downstreamConnectors[d].server.response.get();
+                downstreamPending[d].deq();
+                $display("Crossbar: res %02d <- %02d", u, d);
+                upstreamConnectors[u].client.response.put(res);
+            endrule
+        end
     end
 
     function Wishbone::Slave#(datSize, adrSize, selSize) getUpstream(Integer j);
