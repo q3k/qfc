@@ -547,6 +547,15 @@ module mkTbSPIController(Empty);
                 endseq
             endseq
         endpar
+
+        // Wait for buffer not empty
+        doRead(master, 'h8);
+        getResponse(master, readBuf);
+        while (readBuf[0] != 1) seq
+            doRead(master, 'h8);
+            getResponse(master, readBuf);
+        endseq
+
         doRead(master, 'hc);
         getResponse(master, readBuf);
         dynamicAssert(readBuf == 32'h42, "expected to have received 0x42");
