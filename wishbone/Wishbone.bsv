@@ -50,7 +50,7 @@ typedef struct {
                , numeric type adrSize
                , numeric type selSize
                )
-deriving (Bits);
+deriving (Bits, FShow);
 
 typedef struct {
     Maybe#(Bit#(datSize)) readData;
@@ -157,11 +157,25 @@ module mkSlaveConnector#(Bool sync) (SlaveConnector#(datSize, adrSize, selSize))
     let probeDataOut <- mkProbe;
     let probeAck <- mkProbe;
 
-    rule process_incoming;
+    Reg#(Bool) pending <- mkReg(False);
+    Reg#(Bool) pendingFast <- mkWire;
+
+    rule process_incoming(!pending);
+        pending <= True;
+        pendingFast <= True;
         fReq.enq(incoming);
     endrule
 
-    rule process_outgoing;
+    if (!sync) begin
+        rule process_outgoing_fast(pendingFast);
+            pending <= False;
+            fRes.deq();
+            outgoing <= tagged Valid fRes.first();
+        endrule
+    end
+
+    rule process_outgoing(pending);
+        pending <= False;
         fRes.deq();
         outgoing <= tagged Valid fRes.first();
     endrule
@@ -232,7 +246,7 @@ interface MasterConnector#( numeric type datSize
 endinterface
 
 module mkMasterConnector (MasterConnector#(datSize, adrSize, selSize));
-    FIFO#(SlaveRequest#(datSize, adrSize, selSize)) fReq <- mkPipelineFIFO;
+    FIFO#(SlaveRequest#(datSize, adrSize, selSize)) fReq <- mkBypassFIFO;
     FIFO#(SlaveResponse#(datSize)) fRes <- mkBypassFIFO;
     Reg#(Maybe#(SlaveRequest#(datSize, adrSize, selSize))) outgoing <- mkDWire(tagged Invalid);
     Reg#(Maybe#(Bit#(datSize))) incoming <- mkDWire(tagged Invalid);
@@ -244,7 +258,7 @@ module mkMasterConnector (MasterConnector#(datSize, adrSize, selSize));
     rule process_incoming (incoming matches tagged Valid .data);
         let pending = fReq.first();
         fReq.deq();
-        
+
         let resp = SlaveResponse { readData: tagged Invalid };
         if (pending.writeData matches tagged Invalid) begin
             resp.readData = tagged Valid data;

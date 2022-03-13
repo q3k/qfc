@@ -39,7 +39,7 @@ endfunction
 
 (* synthesize *)
 module mkTbConnectors(Empty);
-    Wishbone::SlaveConnector#(32, 24, 4) slave <- mkSyncSlaveConnector;
+    Wishbone::SlaveConnector#(32, 24, 4) slave <- mkAsyncSlaveConnector;
     Wishbone::MasterConnector#(32, 24, 4) master <- mkMasterConnector;
 
     mkConnection(slave.slave, master.master);
@@ -68,6 +68,7 @@ module mkTbConnectors(Empty);
         slave.client.response.put(resp);
     endrule
 
+    Reg#(Bit#(32)) i <- mkReg(0);
     Stmt test = seq
         doRead(master, 0);
         expectResponse(master, 32'hdeadbeef, "wanted deadbeef");
@@ -92,6 +93,10 @@ module mkTbConnectors(Empty);
             doRead(master, 1337);
         endpar
         expectResponse(master, 10, "wanted 10");
+
+        for (i <= 0; i < 12; i <= i + 1) seq
+            noAction;
+        endseq
     endseq;
     mkAutoFSM(test);
 endmodule
