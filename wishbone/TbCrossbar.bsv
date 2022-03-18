@@ -16,6 +16,7 @@ function Maybe#(WishboneCrossbar::DecodedAddr#(4, 32)) decoder(Bit#(32) addr);
         32'h2???_????: tagged Valid DecodedAddr { downstream: 1, address: addr & 32'hffff };
         32'h4???_????: tagged Valid DecodedAddr { downstream: 2, address: addr & 32'hffff };
         32'h8???_????: tagged Valid DecodedAddr { downstream: 3, address: addr & 32'hffff };
+        default: tagged Invalid;
     endcase;
 endfunction
 
