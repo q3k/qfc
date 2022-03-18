@@ -1,0 +1,47 @@
+load("//build/bluespec:rules.bzl", "bluespec_library")
+load("//build/synthesis:rules.bzl", "rtl_bundle")
+
+bluespec_library(
+    name = "QF100",
+    srcs = [
+        "QF100.bsv",
+    ],
+    deps = [
+        "//lanai:cpu",
+        "//wishbone/peripherals:spi",
+        "//wishbone/peripherals:gpio",
+    ],
+    synthesize = {
+        "QF100": [
+            "mkQF105",
+            "mkQF100Memory",
+            "mkQF100SPI",
+            "mkQF100GPIO",
+            "mkQF100Fabric",
+        ],
+    },
+    data = [
+        ":bram.bin",
+    ],
+)
+
+rtl_bundle(
+    name = "qf100",
+    outputs = {
+        "mkLanaiCPU": [],
+        "mkQF100Memory": [],
+        "mkQF100SPI": [],
+        "mkQF100GPIO": [],
+        "mkQF100Fabric": [],
+        "mkQF105": [
+            "mkLanaiCPU",
+            "mkQF100Memory",
+            "mkQF100SPI",
+            "mkQF100GPIO",
+            "mkQF100Fabric",
+        ],
+    },
+    deps = [
+        ":QF100"
+    ],
+)
