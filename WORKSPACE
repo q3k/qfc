@@ -24,8 +24,8 @@ load("@io_tweag_rules_nixpkgs//nixpkgs:nixpkgs.bzl", "nixpkgs_git_repository", "
 
 nixpkgs_git_repository(
     name = "nixpkgs",
-    revision = "71ec7f4ad20b5c4c4a14d2a09f6040ade87c257d",
-    sha256 = "f712f0586a3ffa693741ca1e62f26d366cc0f663041066a5b8f5606e930ff8b2",
+    revision = "36f0cc6def05dea2b0e9ab0ff4b1dbd9e0d94dda",
+    sha256 = "a40fb99f59df730883a45d78f3091e59080eace36b81139bc5bea1c453cbd7a7",
 )
 
 nixpkgs_cc_configure(
@@ -90,6 +90,7 @@ toolchain(
     toolchain = ":bsc_nixpkgs",
     toolchain_type = "@qfc//build/bluespec:toolchain_type",
 )
+
     """,
 )
 
@@ -145,6 +146,7 @@ toolchain(
     toolchain = ":yosysflow_nixpkgs_ecp5",
     toolchain_type = "@qfc//build/synthesis:toolchain_type",
 )
+
     """,
 )
 
