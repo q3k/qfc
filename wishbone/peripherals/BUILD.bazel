@@ -21,3 +21,25 @@ bluesim_test(
     ],
     top = "mkTbSPIController",
 )
+
+bluespec_library(
+    name = "gpio",
+    srcs = [
+        "WishboneGPIO.bsv",
+    ],
+    synthesize = {
+        "WishboneGPIO": ["mkTbGPIOController"],
+    },
+    deps = [
+        "//wishbone",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+bluesim_test(
+    name = "test_gpio",
+    deps = [
+        ":gpio",
+    ],
+    top = "mkTbGPIOController",
+)
