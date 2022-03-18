@@ -15,7 +15,6 @@ endinterface
 // n is the amount of kilowords of RAM available.
 interface Lanai_BlockRAM#(numeric type n);
     interface Lanai_Memory memory;
-    method Action dump;
 endinterface
 
 module mkBlockMemory#(String filename) (Lanai_BlockRAM#(k)) provisos (Log#(k, n));
@@ -29,8 +28,6 @@ module mkBlockMemory#(String filename) (Lanai_BlockRAM#(k)) provisos (Log#(k, n)
     FIFO#(BRAMRequestBE#(Bit#(n), Bit#(32), 4)) delayFIFO <- mkPipelineFIFO;
 
     FIFO#(DMemReq) waitQ <- mkPipelineFIFO;
-    Reg#(Bool) dumping <- mkReg(False);
-    Reg#(Word) dumpI <- mkReg(0);
 
     let nwords = valueOf(n);
 
@@ -40,31 +37,10 @@ module mkBlockMemory#(String filename) (Lanai_BlockRAM#(k)) provisos (Log#(k, n)
         bram.portB.request.put(breq);
     endrule
 
-    rule dumpPrint (dumping);
-        if (dumpI <= fromInteger(valueOf(k))) begin
-            bram.portA.request.put(BRAMRequestBE { writeen: 4'b000
-                                                 , responseOnWrite: True
-                                                 , address: dumpI[nwords-1:0]
-                                                 , datain: 0
-                                                 });
-            if (dumpI > 0) begin
-                let data <- bram.portA.response.get();
-                $display("%x: %x", (dumpI-1)<<2, data);
-            end
-            dumpI <= dumpI + 1;
-        end else begin
-            $finish(0);
-        end
-    endrule
-
-    method Action dump;
-        dumping <= True;
-    endmethod
-
     interface Lanai_Memory memory;
         interface Server imem;
             interface Put request;
-                method Action put(Word addr) if (!dumping);
+                method Action put(Word addr);
                     bram.portA.request.put(BRAMRequestBE { writeen: 4'b000
                                                          , responseOnWrite: True
                                                          , address: addr[nwords+1:2]
@@ -77,7 +53,7 @@ module mkBlockMemory#(String filename) (Lanai_BlockRAM#(k)) provisos (Log#(k, n)
 
         interface Server dmem;
             interface Put request;
-                method Action put(DMemReq req) if (!dumping);
+                method Action put(DMemReq req);
                     waitQ.enq(req);
                     Bit#(n) addr = req.addr[nwords+1:2];
                     let breq = BRAMRequestBE { writeen: 4'b0000
@@ -157,7 +133,7 @@ module mkBlockMemory#(String filename) (Lanai_BlockRAM#(k)) provisos (Log#(k, n)
                 endmethod
             endinterface
             interface Get response;
-                method ActionValue#(Word) get() if (!dumping);
+                method ActionValue#(Word) get();
                     waitQ.deq();
                     let req = waitQ.first;
                     Bit#(n) addr = req.addr[nwords+1:2];

@@ -35,9 +35,6 @@ module mkLanaiCPU (Lanai_IFC);
     mkConnection(fetch.compute, compute.fetch);
     mkConnection(compute.memory, memory.compute);
 
-    method Word readPC;
-        return rf.debug.read(R7);
-    endmethod
     interface imem_client = fetch.imem;
     interface dmem_client = memory.dmem;
     interface sysmem_client = memory.sysmem;
