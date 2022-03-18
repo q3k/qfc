@@ -26,7 +26,7 @@ module mkCrossbar#(function Maybe#(DecodedAddr#(downstreamNumer, adrSize)) decod
                  (Crossbar#(upstreamNum, downstreamNum, datSize, adrSize, selSize));
 
     Vector#(upstreamNum, Wishbone::SlaveConnector#(datSize, adrSize, selSize)) upstreamConnectors <- replicateM(mkAsyncSlaveConnector);
-    Vector#(upstreamNum, Wishbone::MasterConnector#(datSize, adrSize, selSize)) downstreamConnectors <- replicateM(mkMasterConnector);
+    Vector#(downstreamNum, Wishbone::MasterConnector#(datSize, adrSize, selSize)) downstreamConnectors <- replicateM(mkMasterConnector);
 
     Vector#(upstreamNum, FIFO#(Wishbone::SlaveRequest#(datSize, adrSize, selSize))) upstreamRequests <- replicateM(mkBypassFIFO);
     Vector#(downstreamNum, FIFO#(Bit#(TLog#(upstreamNum)))) downstreamPending <- replicateM(mkBypassFIFO);
