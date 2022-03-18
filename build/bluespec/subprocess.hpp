@@ -6,6 +6,7 @@
 // Copyright (c) 2015 Tero Saarni
 // Copyright (c) 2021 Sergiusz Bazanski
 //
+// SPDX-License-Identifier: MIT
 
 #pragma once
 

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2022 Sergiusz Bazanski
+
 load("@qfc//build:providers.bzl", "BscInfo", "VerilogInfo", "BluespecInfo")
 load("@rules_cc//cc:toolchain_utils.bzl", "find_cpp_toolchain")
 

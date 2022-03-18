@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2022 Sergiusz Bazanski
+
 # Run this manually to regenerate bram.bin.
 # TODO: pipe this into Bazel, or just use a real assembler at some point.
 

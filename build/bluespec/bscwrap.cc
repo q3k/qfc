@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2022 Sergiusz Bazanski
+
 // Set up 'bsc' for execution by giving it a PATH containing a symlink forest
 // of executables it wants to shell out to.
 

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2022 Sergiusz Bazanski
+
 package CPU_Memory;
 
 import ClientServer :: *;

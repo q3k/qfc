@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2022 Sergiusz Bazanski
+
 load("@qfc//build:providers.bzl", "YosysFlowInfo", "VerilogInfo")
 
 def _yosysflow_toolchain_impl(ctx):

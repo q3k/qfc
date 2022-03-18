@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2022 Sergiusz Bazanski
+
 package Wishbone;
 
 // This package implements a Wishbone interface definition in Bluespec plus a
