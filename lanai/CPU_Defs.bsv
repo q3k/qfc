@@ -438,9 +438,8 @@ typedef enum {
     Byte
 } DMemReqWidth deriving (Bits);
 
-//interface ComputedPC;
-//    (* always_ready *)
-//    method Maybe#(Word) get;
-//endinterface
+// Everything below sysmemSplit is routed to imem/dmem. Everything including
+// and above is routed to sysmem/wishbone.
+Word sysmemSplit = 32'h2000_0000;
 
 endpackage

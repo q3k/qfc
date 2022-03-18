@@ -9,6 +9,7 @@ bluespec_library(
     ],
     deps = [
         "//wishbone",
+        "//wishbone/peripherals:spi",
     ],
     visibility = [
         "//visibility:public",

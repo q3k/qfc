@@ -6,6 +6,7 @@ import FIFO :: *;
 import FIFOF :: *;
 import Probe :: *;
 import SpecialFIFOs :: *;
+import Wishbone :: *;
 
 import Lanai_IFC :: *;
 import CPU_Defs :: *;
@@ -13,11 +14,13 @@ import CPU_Defs :: *;
 interface CPU_Memory;
     interface Put #(ComputeToMemory) compute;
     interface Client #(DMemReq, Word) dmem;
+    interface Wishbone::Master #(32, 32, 4) sysmem;
 endinterface
 
 typedef struct {
     Maybe#(Register) rd;
     Word pc;
+    Word ea;
 } WaitReadResponse deriving (Bits);
 
 module mkCPUMemory #( RegisterWriteMemory rwr
@@ -32,6 +35,9 @@ module mkCPUMemory #( RegisterWriteMemory rwr
     Reg#(Bool) startPCLoad <- mkDWire(False);
     Reg#(Bool) stopPCLoad <- mkDWire(False);
     let pcLoadStall = pendingPCLoad;
+    FIFO#(Wishbone::SlaveResponse#(32)) delaySysmemResponse <- mkPipelineFIFO;
+
+    Wishbone::MasterConnector#(32, 32, 4) sysmemMaster <- mkMasterConnector;
 
     PulseWire busyReq <- mkPulseWire;
     PulseWire busyResp <- mkPulseWire;
@@ -70,9 +76,65 @@ module mkCPUMemory #( RegisterWriteMemory rwr
         end
     endrule
 
+    rule sysmemRequest(!pcLoadStall && q.first.ea >= sysmemSplit);
+        q.deq;
+        busyReq.send();
+        eaProbe <= q.first.ea;
+        let pc = q.first.pc;
+        Maybe#(Bit#(32)) data = tagged Invalid;
+        Bool spurious = False;
+        case (q.first.op) matches
+            tagged Noop: begin
+                waitRead.enq(WaitReadResponse { pc: pc, ea: q.first.ea, rd: tagged Invalid });
+                spurious = True;
+            end
+            tagged Load .rd: begin
+                waitRead.enq(WaitReadResponse { pc: pc, ea: q.first.ea, rd: tagged Valid rd });
+                if (rd == PC) begin
+                    startPCLoad <= True;
+                end
+            end
+            tagged Store .d: begin
+                waitRead.enq(WaitReadResponse { pc: pc, ea: q.first.ea, rd: tagged Invalid });
+                data = tagged Valid d;
+            end
+        endcase
+        sysmemMaster.server.request.put(SlaveRequest { address: q.first.ea
+                                                     , writeData: data
+                                                     , select: 4'b1111
+                                                     });
+    endrule
+
+    rule sysmemResponseDelay;
+        let data <- sysmemMaster.server.response.get();
+        delaySysmemResponse.enq(data);
+    endrule
+
+    rule sysmemResponse(waitRead.first.ea >= sysmemSplit);
+        waitRead.deq;
+        let resp = delaySysmemResponse.first;
+        delaySysmemResponse.deq();
+
+        let data = fromMaybe(0, resp.readData);
+
+        if (waitRead.first.rd matches tagged Valid .rd) begin
+            busyResp.send();
+            responseRegProbe <= rd;
+            if (rd == PC) begin
+                stopPCLoad <= True;
+                mispredict.put(Misprediction { pc: data
+                                             , opc: waitRead.first.pc + 8
+                                             });
+            end else begin
+                rwr.write(rd, data);
+                bypass.strobe(rd, data);
+            end
+        end
+    endrule
+
     interface Client dmem;
         interface Get request;
-            method ActionValue#(DMemReq) get if (!pcLoadStall);
+            method ActionValue#(DMemReq) get if (!pcLoadStall && q.first.ea < sysmemSplit);
                 busyReq.send();
 
                 q.deq;
@@ -84,17 +146,17 @@ module mkCPUMemory #( RegisterWriteMemory rwr
                 Bool spurious = False;
                 case (q.first.op) matches
                     tagged Noop: begin
-                        waitRead.enq(WaitReadResponse { pc: pc, rd: tagged Invalid });
+                        waitRead.enq(WaitReadResponse { pc: pc, ea: q.first.ea, rd: tagged Invalid });
                         spurious = True;
                     end
                     tagged Load .rd: begin
-                        waitRead.enq(WaitReadResponse { pc: pc, rd: tagged Valid rd });
+                        waitRead.enq(WaitReadResponse { pc: pc, ea: q.first.ea, rd: tagged Valid rd });
                         if (rd == PC) begin
                             startPCLoad <= True;
                         end
                     end
                     tagged Store .d: begin
-                        waitRead.enq(WaitReadResponse { pc: pc, rd: tagged Invalid });
+                        waitRead.enq(WaitReadResponse { pc: pc, ea: q.first.ea, rd: tagged Invalid });
                         data = tagged Valid d;
                     end
                 endcase
@@ -135,6 +197,8 @@ module mkCPUMemory #( RegisterWriteMemory rwr
             q.enq(v);
         endmethod
     endinterface
+
+    interface sysmem = sysmemMaster.master;
 endmodule
 
 endpackage

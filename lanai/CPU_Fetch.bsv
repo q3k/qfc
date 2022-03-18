@@ -41,6 +41,7 @@ module mkCPUFetch #( RegisterRead pcRead
 
     FIFOF#(Misprediction) mispredictComputeF <- mkBypassFIFOF;
     FIFOF#(Misprediction) mispredictMemoryF <- mkBypassFIFOF;
+
     FIFO#(Word) pcRequested <- mkPipelineFIFO;
     FIFOF#(Tuple2#(Word, Word)) fetched <- mkBypassFIFOF;
 
@@ -154,7 +155,7 @@ module mkCPUFetch #( RegisterRead pcRead
 
     interface Client imem;
         interface Get request;
-            method ActionValue#(Word) get;
+            method ActionValue#(Word) get if (fetchPC < sysmemSplit);
                 let pc = fetchPC;
                 //$display("%d get         pc: %x", cycle, pc);
                 pcRequested.enq(pc);
@@ -163,7 +164,7 @@ module mkCPUFetch #( RegisterRead pcRead
             endmethod
         endinterface
         interface Put response;
-            method Action put(Word data);
+            method Action put(Word data) if (pcRequested.first < sysmemSplit);
                 pcRequested.deq;
                 let pc = pcRequested.first;
                 putProbe <= pc;
