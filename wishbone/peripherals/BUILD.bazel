@@ -3,10 +3,10 @@ load("//build/bluespec:rules.bzl", "bluespec_library", "bluesim_test")
 bluespec_library(
     name = "spi",
     srcs = [
-        "SPI.bsv",
+        "WishboneSPI.bsv",
     ],
     synthesize = {
-        "SPI": ["mkTbSPIController"],
+        "WishboneSPI": ["mkTbSPIController"],
     },
     deps = [
         "//wishbone",

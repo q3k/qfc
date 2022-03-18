@@ -1,4 +1,4 @@
-package SPI;
+package WishboneSPI;
 
 import Assert :: *;
 import ClientServer :: *;
@@ -21,7 +21,7 @@ interface Master;
     method Bit#(1) mosiOe;
 endinterface
 
-interface Controller#(numeric type wbAddr);
+interface SPIController#(numeric type wbAddr);
     interface Wishbone::Slave#(32, wbAddr, 4) slave;
     interface Master spiMaster;
 endinterface
@@ -153,8 +153,8 @@ function Bit#(9) clockForPsc(Bit#(3) psc);
     endcase;
 endfunction
 
-module mkController#(Bit#(wbAddr) baseAddr) (Controller#(wbAddr));
-    Wishbone::SlaveConnector#(32, wbAddr, 4) bus <- mkAsyncSlaveConnector;
+module mkSPIController (SPIController#(wbAddr));
+    Wishbone::SlaveConnector#(32, wbAddr, 4) bus <- mkSyncSlaveConnector;
 
     Reg#(Bit#(1)) ckph <- mkReg(0);
     Reg#(Bit#(1)) ckpl <- mkReg(0);
@@ -255,6 +255,7 @@ module mkController#(Bit#(wbAddr) baseAddr) (Controller#(wbAddr));
 
     rule applyNewConfig;
         let v = newConfig.first();
+        $display("SPI: new config: ", fshow(v));
         newConfig.deq();
         ckph <= v.ckph;
         ckpl <= v.ckpl;
@@ -272,6 +273,7 @@ module mkController#(Bit#(wbAddr) baseAddr) (Controller#(wbAddr));
     rule wbRequest;
         let r <- bus.client.request.get();
         let resp = SlaveResponse { readData: tagged Invalid };
+        $display("SPI: wb request", fshow(r));
         case (r.address) matches
             0: begin
                 case (r.writeData) matches
@@ -412,7 +414,7 @@ endfunction
 (* synthesize *)
 module mkTbSPIController(Empty);
     Wishbone::MasterConnector#(32, 32, 4) master <- mkMasterConnector;
-    Controller#(32) controller <- mkController(32'h4001_3000);
+    SPIController#(32) controller <- mkSPIController;
     mkConnection(master.master, controller.slave);
 
     Reg#(Bit#(32)) i <- mkReg(0);
