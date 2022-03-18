@@ -44,7 +44,7 @@ module mkCrossbar#(function Maybe#(DecodedAddr#(downstreamNumer, adrSize)) decod
         rule request_handle;
             let req <- upstreamConnectors[u].client.request.get();
             upstreamRequests[u].enq(req);
-            $display("Crossbar: req %02d -> ?", u);
+            //$display("Crossbar: req %02d -> ?", u);
         endrule
 
         for (Integer d = 0; d < valueOf(downstreamNum); d = d + 1) begin
@@ -60,7 +60,7 @@ module mkCrossbar#(function Maybe#(DecodedAddr#(downstreamNumer, adrSize)) decod
                 upstreamRequests[u].deq();
                 downstreamConnectors[d].server.request.put(req);
                 downstreamPending[d].enq(fromInteger(u));
-                $display("Crossbar: req %02d -> %02d", u, d);
+                //$display("Crossbar: req %02d -> %02d", u, d);
             endrule
         end
     end
@@ -70,7 +70,7 @@ module mkCrossbar#(function Maybe#(DecodedAddr#(downstreamNumer, adrSize)) decod
             rule response_route(downstreamPending[d].first == fromInteger(u));
                 let res <- downstreamConnectors[d].server.response.get();
                 downstreamPending[d].deq();
-                $display("Crossbar: res %02d <- %02d", u, d);
+                //$display("Crossbar: res %02d <- %02d", u, d);
                 upstreamConnectors[u].client.response.put(res);
             endrule
         end
