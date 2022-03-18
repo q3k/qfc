@@ -3,3 +3,10 @@ toolchain_type(
     visibility = ["//visibility:public"],
 )
 
+py_binary(
+    name = "add_power_pins",
+    srcs = [
+        ":add_power_pins.py",
+    ],
+    visibility = ["//visibility:public"],
+)

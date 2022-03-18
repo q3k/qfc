@@ -52,7 +52,7 @@ def _get_flags(ctx):
             nextpnr_flags += ["--package", "CABGA256"]
 
         return struct(
-            yosys_synth_command = "synth_ecp5 -abc9 -nowidelut -top %TOP%",
+            yosys_synth_command = "synth_ecp5 -abc9 -top %TOP%",
             nextpnr_flags = nextpnr_flags,
         )
     fail("Unsupported FPGA (needs //build/platforms:fpga_family constraint set)")
@@ -96,7 +96,6 @@ def _yosysflow_bitstream_impl(ctx):
         executable = yosys,
         arguments = [
             "-s", scriptfile.path,
-            "-q",
         ],
         inputs = depset([ scriptfile ], transitive=[ sources, data_files ]),
         outputs = [ json ],
@@ -116,7 +115,7 @@ def _yosysflow_bitstream_impl(ctx):
     ctx.actions.run(
         mnemonic = "BitstreamRoute",
         executable = nextpnr,
-        arguments = nextpnr_arguments + [ "-q" ],
+        arguments = nextpnr_arguments + [ ],
         inputs = [ json, ctx.file.constraints ],
         outputs = [ unpacked ],
     )
@@ -157,6 +156,116 @@ yosysflow_bitstream = rule(
         "_ecp5_lfe5u_85f": attr.label(default="@qfc//build/platforms:LFE5U_85F"),
         "_ecp5_cabga381": attr.label(default="@qfc//build/platforms:CABGA381"),
         "_ecp5_cabga256": attr.label(default="@qfc//build/platforms:CABGA256"),
+    },
+    toolchains = ["@qfc//build/synthesis:toolchain_type"],
+)
+
+def _rtl_bundle_impl(ctx):
+    sources = depset(
+        ctx.files.srcs,
+        transitive = [dep[VerilogInfo].sources for dep in ctx.attr.deps],
+    )
+    data_files = depset(
+        [],
+        transitive = [dep[VerilogInfo].data_files for dep in ctx.attr.deps],
+    )
+
+    info = ctx.toolchains["@qfc//build/synthesis:toolchain_type"].yosysflowinfo
+    yosys = info.yosys[DefaultInfo].files_to_run
+
+    bundle = ctx.actions.declare_file(ctx.label.name + ".bundle.zip")
+
+    args = ["c", bundle.path]
+    for f in sources.to_list() + data_files.to_list():
+        args.append(f.path)
+
+    ctx.actions.run(
+        inputs = sources.to_list() + data_files.to_list(),
+        outputs = [bundle],
+        executable = ctx.executable._zipper,
+        arguments = args,
+        progress_message = "Creating bundle...",
+        mnemonic = "zipper",
+    )
+
+    outputs = []
+    for (name, blackboxes) in ctx.attr.outputs.items():
+        srcline = " ".join([s.path for s in sources.to_list()])
+        intermediate = ctx.actions.declare_file(ctx.label.name + "/" + name + ".intermediate.v")
+        presynth = ctx.actions.declare_file(ctx.label.name + "/" + name + ".v")
+        scriptfile = ctx.actions.declare_file(ctx.attr.name + "/" + name + ".ys")
+        content = """
+            read_verilog -defer {}
+            hierarchy -top {} -purge_lib
+        """.format(srcline, name)
+
+        for blackbox in blackboxes:
+            content += "blackbox {}\n".format(blackbox)
+
+        content += """
+            hierarchy -top {} -purge_lib
+            write_verilog {}
+        """.format(
+            name,
+            intermediate.path,
+        )
+
+        ctx.actions.write(
+            output = scriptfile,
+            content = content
+        )
+
+        ctx.actions.run(
+            mnemonic = "DesignPresynth",
+            executable = yosys,
+            arguments = [
+                "-s", scriptfile.path,
+                "-q",
+            ],
+            inputs = depset([ scriptfile ], transitive=[ sources, data_files ]),
+            outputs = [intermediate],
+        )
+
+        ctx.actions.run(
+            mnemonic = "PowerPinsAdd",
+            executable = ctx.executable._add_power_pins,
+            arguments = [
+                name,
+                intermediate.path,
+                presynth.path,
+            ],
+            inputs = [ intermediate ],
+            outputs = [ presynth ],
+        )
+
+        outputs.append(presynth)
+
+    return [
+        DefaultInfo(
+            files = depset([bundle]+outputs),
+        )
+    ]
+
+rtl_bundle = rule(
+    implementation = _rtl_bundle_impl,
+    attrs = {
+        "srcs": attr.label_list(
+            allow_files = True,
+        ),
+        "deps": attr.label_list(
+            providers = [VerilogInfo],
+        ),
+        "outputs": attr.string_list_dict(),
+        "_add_power_pins": attr.label(
+            default = Label("//build/synthesis:add_power_pins"),
+            cfg = "host",
+            executable = True,
+        ),
+        "_zipper": attr.label(
+            default = Label("@bazel_tools//tools/zip:zipper"),
+            cfg = "host",
+            executable = True,
+        ),
     },
     toolchains = ["@qfc//build/synthesis:toolchain_type"],
 )
