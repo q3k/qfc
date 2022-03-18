@@ -1,11 +1,22 @@
 package Board;
 
 import Connectable :: *;
+import TieOff :: *;
+
 import Lanai_IFC :: *;
 import Lanai_CPU :: *;
 import Lanai_Memory :: *;
 import ECP5 :: *;
 import RAM :: *;
+import WishboneCrossbar :: *;
+import SPI :: *;
+
+function Maybe#(WishboneCrossbar::DecodedAddr#(1, 32)) decoder(Bit#(32) address);
+    return case (address) matches
+        32'h4001_3???: tagged Valid DecodedAddr { downstream: 0, address: address & 32'hfff };
+        default: tagged Invalid;
+    endcase;
+endfunction
 
 interface Top;
     (* always_enabled *)
@@ -18,6 +29,12 @@ interface Top;
     method Bool dutReset;
 
     interface ESP32 wifi;
+
+    (* always_enabled *)
+    method Bool spiMOSI;
+
+    (* always_enabled *)
+    method Bool spiSCK;
 endinterface
 
 interface ESP32;
@@ -28,7 +45,7 @@ endinterface
 (* synthesize *)
 module mkMemory(Lanai_BlockRAM#(1024));
     // TODO(q3k): ... figure out how the fuck to unhardcode this.
-    Lanai_BlockRAM#(1024) inner <- mkBlockMemory("bazel-out/k8-fastbuild/bin/boards/ulx3s/bram.bin");
+    Lanai_BlockRAM#(1024) inner <- mkBlockMemory("boards/ulx3s/bram.bin");
     return inner;
 endmodule
 
@@ -39,8 +56,13 @@ module mkTop (Top);
     let mem <- mkMemory;
     Lanai_IFC cpu <- mkLanaiCPU;
 
+    WishboneCrossbar::Crossbar#(1, 1, 32, 32, 4) fabric <- mkCrossbar(decoder);
+    SPI::Controller#(32) spi <- mkSPIController;
+    mkConnection(fabric.downstreams[0], spi.slave);
+
     mkConnection(cpu.imem_client, mem.memory.imem);
     mkConnection(cpu.dmem_client, mem.memory.dmem);
+    mkConnection(cpu.sysmem_client, fabric.upstreams[0]);
 
     Reg#(Bit#(TLog#(25))) dutClockCounter <- mkReg(0);
     Reg#(Bool) dutClockValue <- mkReg(False);
@@ -73,6 +95,9 @@ module mkTop (Top);
     method Bool dutReset;
         return (dutResetCounter == 255);
     endmethod
+
+    method spiMOSI = unpack(spi.spiMaster.mosi);
+    method spiSCK  = unpack(spi.spiMaster.sclk);
 
 endmodule
 

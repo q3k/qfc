@@ -14,20 +14,20 @@ bluespec_library(
         "Board": ["mkTop", "mkMemory"],
     },
     data = [
-        ":bram",
+        ":bram.bin",
     ],
 )
 
-genrule(
-    name = "bram",
-    tools = [
-        "//lanai/qasm",
-    ],
-    cmd = "$(location //lanai/qasm) $@",
-    outs = [
-        "bram.bin"
-    ],
-)
+#genrule(
+#    name = "bram",
+#    tools = [
+#        "//lanai/qasm",
+#    ],
+#    cmd = "$(location //lanai/qasm) $@",
+#    outs = [
+#        "bram.bin"
+#    ],
+#)
 
 yosysflow_bitstream(
     name = 'ulx3s',
