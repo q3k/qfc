@@ -131,12 +131,12 @@ module mkQF100Core(CaravelUserProject);
     endmethod
 
     method Bit#(38) io_oeb;
-        return pack(IOPins { spi_sck: 1
-                           , spi_mosi: 1
-                           , spi_miso: 0
-                           , gpio: gpio.oe()
-                           , unused: 0
-                           });
+        return ~pack(IOPins { spi_sck: 1
+                            , spi_mosi: 1
+                            , spi_miso: 0
+                            , gpio: gpio.oe()
+                            , unused: 0
+                            });
     endmethod
 
     method Bit#(38) io_out;
