@@ -6,8 +6,6 @@ import Vector :: *;
 import CPU_Defs :: *;
 
 interface CPU_RegisterFile;
-    interface RegisterRead debug;
-
     interface RegisterRead fetchRead;
 
     interface RegisterRead computeSource1;
@@ -26,6 +24,12 @@ module mkConstantReg #(Word val)
      endmethod
 endmodule
 
+(* synthesize *)
+module mkRFReg(Reg#(Word));
+    let res <- mkConfigReg(0);
+    return res;
+endmodule
+
 typedef Wire#(Tuple2#(Register, Word)) WriteReq;
 
 (* synthesize *)
@@ -36,7 +40,7 @@ module mkCPURegisterFile(CPU_RegisterFile);
             1: mkConstantReg(32'hFFFFFFFF);
             2: mkConstantReg(32'hDEADBEEF);
             4: mkConfigReg(32'h00004000);
-            default: mkConfigReg(0);
+            default: mkRFReg;
         endcase;
     endfunction
     Vector#(32, Reg#(Word)) regs <- genWithM(makeRegs);
@@ -76,7 +80,6 @@ module mkCPURegisterFile(CPU_RegisterFile);
         endinterface);
     endfunction
 
-    interface RegisterRead debug = makeRead;
     interface RegisterRead fetchRead = makeRead;
     interface RegisterRead computeSource1 = makeRead;
     interface RegisterRead computeSource2 = makeRead;

@@ -32,7 +32,7 @@ bluespec_library(
     synthesize = {
         "Lanai_CPU": ["mkLanaiCPU"],
         "CPU_ALU": ["mkALU"],
-        "CPU_RegisterFile": ["mkCPURegisterFile"],
+        "CPU_RegisterFile": ["mkCPURegisterFile", "mkRFReg"],
     },
     visibility = [
         "//visibility:public",
