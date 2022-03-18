@@ -39,7 +39,7 @@ module mkCPURegisterFile(CPU_RegisterFile);
             0: mkConstantReg(32'h00000000);
             1: mkConstantReg(32'hFFFFFFFF);
             2: mkConstantReg(32'hDEADBEEF);
-            4: mkConfigReg(32'h00004000);
+            4: mkConfigReg(32'h00002000);
             default: mkRFReg;
         endcase;
     endfunction
