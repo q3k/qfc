@@ -204,7 +204,6 @@ def _rtl_bundle_impl(ctx):
 
         content += """
             hierarchy -top {} -purge_lib
-            prep
             write_verilog {}
         """.format(
             name,
