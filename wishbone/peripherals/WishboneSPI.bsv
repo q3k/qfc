@@ -337,7 +337,7 @@ module mkSPIController (SPIController#(wbAddr));
             end
         endcase
     endcase;
-    let mosi = case (enableMaster && isValid(sendingBit)) matches
+    let mosi = case (enableMaster && dataValid && isValid(sendingBit)) matches
         True: data[activeBitNo];
         False: 0;
     endcase;
