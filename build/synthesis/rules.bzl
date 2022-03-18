@@ -191,9 +191,9 @@ def _rtl_bundle_impl(ctx):
     outputs = []
     for (name, blackboxes) in ctx.attr.outputs.items():
         srcline = " ".join([s.path for s in sources.to_list()])
-        intermediate = ctx.actions.declare_file(ctx.label.name + "/" + name + ".intermediate.v")
+        intermediate = ctx.actions.declare_file(ctx.label.name + "_/" + name + ".intermediate.v")
         presynth = ctx.actions.declare_file(ctx.label.name + "/" + name + ".v")
-        scriptfile = ctx.actions.declare_file(ctx.attr.name + "/" + name + ".ys")
+        scriptfile = ctx.actions.declare_file(ctx.attr.name + "_/" + name + ".ys")
         content = """
             read_verilog -defer {}
             hierarchy -top {} -purge_lib
@@ -204,6 +204,7 @@ def _rtl_bundle_impl(ctx):
 
         content += """
             hierarchy -top {} -purge_lib
+            prep
             write_verilog {}
         """.format(
             name,
@@ -231,6 +232,7 @@ def _rtl_bundle_impl(ctx):
             executable = ctx.executable._add_power_pins,
             arguments = [
                 name,
+                ','.join(blackboxes),
                 intermediate.path,
                 presynth.path,
             ],
