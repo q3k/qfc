@@ -19,16 +19,16 @@ with open(sys.argv[4], "w") as f:
             else:
                 in_declaration = False
                 f.write("`ifdef USE_POWER_PINS\n")
-                f.write("    inout VPWR;\n")
-                f.write("    inout VGND;\n")
+                f.write("    inout vccd1;\n")
+                f.write("    inout vssd1;\n")
                 f.write("`endif\n")
                 f.write(line + "\n")
         else:
             if line.startswith(declaration_prefix):
                 f.write(f"module {name}(\n")
                 f.write("`ifdef USE_POWER_PINS\n")
-                f.write("    VPWR,\n")
-                f.write("    VGND,\n")
+                f.write("    vccd1,\n")
+                f.write("    vssd1,\n")
                 f.write("`endif\n")
                 f.write(f"    " + line[len(declaration_prefix):] + "\n")
                 in_declaration = True
@@ -43,7 +43,7 @@ with open(sys.argv[4], "w") as f:
                 f.write(line + "\n")
                 if in_instantiation:
                     f.write("`ifdef USE_POWER_PINS\n")
-                    f.write("    .VPWR(VPWR),\n")
-                    f.write("    .VGND(VGND),\n")
+                    f.write("    .vccd1(vccd1),\n")
+                    f.write("    .vssd1(vssd1),\n")
                     f.write("`endif\n")
 
