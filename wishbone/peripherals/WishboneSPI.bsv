@@ -340,8 +340,11 @@ module mkSPIController (SPIController#(wbAddr));
             end
         endcase
     endcase;
-    let mosi = case (enableMaster && dataValid && isValid(sendingBit)) matches
-        True: data[activeBitNo];
+    let mosi = case (enableMaster && isValid(sendingBit)) matches
+        True: case (shiftregTx) matches
+            tagged Valid .d: d[activeBitNo];
+            tagged Invalid: 0;
+        endcase
         False: 0;
     endcase;
     let mosiOe = case (enableMaster) matches
