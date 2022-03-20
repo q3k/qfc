@@ -76,6 +76,7 @@ module mkFork(Fork#(t)) provisos (Routable#(t), Bits#(t, _));
     endinterface
 endmodule
 
+(* synthesize *)
 module mkLanaiFrontend(LanaiFrontend);
     Fork#(Word)    forkIMem <- mkFork;
     Fork#(DMemReq) forkDMem <- mkFork;

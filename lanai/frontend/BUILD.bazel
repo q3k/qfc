@@ -6,7 +6,7 @@ bluespec_library(
         "LanaiFrontend.bsv",
     ],
     synthesize = {
-        #"SPIFlashController": ["mkTbFlashController"],
+        "LanaiFrontend": ["mkLanaiFrontend"],
     },
     deps = [
         "//lanai",

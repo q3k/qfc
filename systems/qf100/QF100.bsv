@@ -15,21 +15,24 @@ import RAM :: *;
 import WishboneCrossbar :: *;
 import WishboneSPI :: *;
 import WishboneGPIO :: *;
+import WishboneKitchenSink :: *;
 
 
-Bit#(1) wbAddrSPI = 0;
-Bit#(1) wbAddrGPIO = 1;
+Bit#(2) wbAddrSPI = 0;
+Bit#(2) wbAddrGPIO = 1;
+Bit#(2) wbAddrKSC  = 2;
 
-function Maybe#(WishboneCrossbar::DecodedAddr#(2, 32)) decoder(Bit#(32) address);
+function Maybe#(WishboneCrossbar::DecodedAddr#(3, 32)) decoder(Bit#(32) address);
     return case (address) matches
         32'h4001_30??: tagged Valid DecodedAddr { downstream: wbAddrSPI, address: address & 32'hff };
         32'h4001_08??: tagged Valid DecodedAddr { downstream: wbAddrGPIO, address: address & 32'hff };
+        32'h4001_1c??: tagged Valid DecodedAddr { downstream: wbAddrKSC, address: address & 32'hff };
         default: tagged Invalid;
     endcase;
 endfunction
 
 (* synthesize *)
-module mkQF100Memory(Lanai_BlockRAM#(2048));
+module mkQF100BlockRAM(Lanai_BlockRAM#(2048));
     Lanai_BlockRAM#(2048) inner <- mkBlockMemory(tagged Invalid);
     return inner;
 endmodule
@@ -50,22 +53,40 @@ module mkQF100GPIO(WishboneGPIO::GPIOController#(32));
     method oe = res.oe;
 endmodule
 
+(* synthesize *)
+module mkQF100KSC(WishboneKitchenSink::KitchenSinkController#(32));
+    let res <- mkKitchenSinkController;
+    interface slave = res.slave;
+endmodule
+
 interface QF100Fabric;
     interface Wishbone::Slave#(32, 32, 4) cpu;
     interface Wishbone::Master#(32, 32, 4) spi;
     interface Wishbone::Master#(32, 32, 4) gpio;
+    interface Wishbone::Master#(32, 32, 4) ksc;
 endinterface
 
 (* synthesize *)
 module mkQF100Fabric(QF100Fabric);
-    WishboneCrossbar::Crossbar#(1, 2, 32, 32, 4) fabric <- mkCrossbar(decoder);
+    WishboneCrossbar::Crossbar#(1, 3, 32, 32, 4) fabric <- mkCrossbar(decoder);
 
     interface cpu = fabric.upstreams[0];
     interface spi = fabric.downstreams[wbAddrSPI];
     interface gpio = fabric.downstreams[wbAddrGPIO];
+    interface ksc = fabric.downstreams[wbAddrKSC];
+endmodule
+
+(* synthesize *)
+module mkQF100FlashController(SPIFlashController#(16, 16));
+    SPIFlashController#(16, 16) fmc <- mkSPIFlashController;
+    return fmc;
 endmodule
 
 interface QF100;
+    // RAM.
+    interface Client#(Word, Word) ram_imem;
+    interface Client#(DMemReq, Word) ram_dmem;
+
     // Memory SPI.
     interface WishboneSPI::Master mspi;
     (* always_ready *)
@@ -91,11 +112,7 @@ module mkQF100(QF100);
     mkConnection(cpu.imem_client, frontend.core_imem);
     mkConnection(cpu.dmem_client, frontend.core_dmem);
 
-    Lanai_BlockRAM#(2048) ram <- mkQF100Memory;
-    mkConnection(frontend.ram_imem, ram.memory.imem);
-    mkConnection(frontend.ram_dmem, ram.memory.dmem);
-
-    SPIFlashController#(16, 64) fmc <- mkSPIFlashController;
+    SPIFlashController#(16, 16) fmc <- mkQF100FlashController;
     mkConnection(frontend.fmc_imem, fmc.serverA);
     rule fmcDMemTranslate;
         let req <- frontend.fmc_dmem.request.get();
@@ -112,6 +129,9 @@ module mkQF100(QF100);
     WishboneGPIO::GPIOController#(32) gpioCtrl <- mkQF100GPIO;
     mkConnection(fabric.gpio, gpioCtrl.slave);
 
+    WishboneKitchenSink::KitchenSinkController#(32) ksCtrl <- mkQF100KSC;
+    mkConnection(fabric.ksc, ksCtrl.slave);
+
     interface mspi = fmc.spi;
     method Bool mspi_csb;
         return unpack(fmc.csb);
@@ -120,6 +140,8 @@ module mkQF100(QF100);
     method gpio_oe = gpioCtrl.oe;
     method gpio_out = gpioCtrl.out;
     method gpio_in  = gpioCtrl.in;
+    interface ram_imem = frontend.ram_imem;
+    interface ram_dmem = frontend.ram_dmem;
 endmodule
 
 endpackage

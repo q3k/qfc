@@ -8,6 +8,7 @@ import Connectable :: *;
 import TieOff :: *;
 
 import QF100 :: *;
+import Sky130SRAM :: *;
 
 import Lanai_IFC :: *;
 import Lanai_CPU :: *;
@@ -16,6 +17,14 @@ import RAM :: *;
 import WishboneCrossbar :: *;
 import WishboneSPI :: *;
 import WishboneGPIO :: *;
+
+import SPIFlashEmulator :: *;
+
+(* synthesize *)
+module mkQF100SPIFlashEmulator(SPIFlashEmulator);
+    let res <- mkSPIFlashEmulator("boards/qf100/flash.bin");
+    return res;
+endmodule
 
 interface CaravelUserProject;
     // Logic Analyzer signals
@@ -59,6 +68,10 @@ typedef struct {
 
 module mkQF105Inner(CaravelUserProject);
     let qf100 <- mkQF100;
+    let sram <- mkSky130SRAM;
+
+    mkConnection(qf100.ram_imem, sram.portB);
+    mkConnection(qf100.ram_dmem, sram.portA);
 
     method Bit#(128) la_out = 0;
     method Bit#(3) irq = 0;

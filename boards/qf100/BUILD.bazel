@@ -11,34 +11,46 @@ bluespec_library(
         "//wishbone/peripherals:spi",
         "//wishbone/peripherals:gpio",
         "//systems/qf100",
+        "//systems/qf100:sky130_sram",
+        "//systems/qf100:spi_flash_emulator",
     ],
     synthesize = {
         "Board": [
             "mkQF105",
+            "mkQF100SPIFlashEmulator",
         ],
     },
     data = [
-        ":bram.bin",
+        ":flash.bin",
     ],
 )
 
 rtl_bundle(
     name = "qf100",
+    srcs = [
+        ":sky130_sram_2kbyte_1rw1r_32x512_8.v"
+    ],
     outputs = {
         "mkLanaiCPU": [],
-        "mkQF100Memory": [],
+        "mkLanaiFrontend": [],
         "mkQF100SPI": [],
         "mkQF100GPIO": [],
+        "mkQF100KSC": [],
         "mkQF100Fabric": [],
+        "mkQF100FlashController": [],
         "mkQF105": [
             "mkLanaiCPU",
-            "mkQF100Memory",
+            "mkLanaiFrontend",
             "mkQF100SPI",
             "mkQF100GPIO",
+            "mkQF100KSC",
             "mkQF100Fabric",
+            "mkQF100FlashController",
+            "sky130_sram_2kbyte_1rw1r_32x512_8",
         ],
+        "mkQF100SPIFlashEmulator": [],
     },
     deps = [
-        ":QF100"
+        ":QF100",
     ],
 )

@@ -2,6 +2,22 @@ load("//build/bluespec:rules.bzl", "bluespec_library", "bluesim_test")
 load("//build/synthesis:rules.bzl", "rtl_bundle")
 
 bluespec_library(
+    name = "sky130_sram",
+    srcs = [
+        "Sky130SRAM.bsv",
+    ],
+    synthesize = {
+        "Sky130SRAM": [
+            "mkSky130SRAM",
+        ],
+    },
+    deps = [
+        "//lanai",
+    ],
+    visibility = [ "//visibility:public" ],
+)
+
+bluespec_library(
     name = "qf100",
     srcs = [
         "QF100.bsv",
@@ -12,14 +28,17 @@ bluespec_library(
         "//lanai/frontend:spi_flash_controller",
         "//wishbone/peripherals:spi",
         "//wishbone/peripherals:gpio",
+        "//wishbone/peripherals:kitchen_sink",
     ],
     synthesize = {
         "QF100": [
             "mkQF100",
-            "mkQF100Memory",
+            "mkQF100BlockRAM",
             "mkQF100SPI",
             "mkQF100GPIO",
+            "mkQF100KSC",
             "mkQF100Fabric",
+            "mkQF100FlashController",
         ],
     },
     visibility = [ "//visibility:public" ],
@@ -36,6 +55,7 @@ bluespec_library(
     ],
     deps = [
         ":qf100",
+        ":sky130_sram",
     ],
     synthesize = {
         "Tb": [
@@ -58,4 +78,5 @@ bluespec_library(
     srcs = [
         "SPIFlashEmulator.bsv",
     ],
+    visibility = [ "//visibility:public" ],
 )
