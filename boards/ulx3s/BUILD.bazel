@@ -7,15 +7,12 @@ bluespec_library(
         "Board.bsv",
     ],
     deps = [
-        "//lanai:cpu",
         "//fpga:ECP5",
+        "//systems/qf100",
     ],
     synthesize = {
-        "Board": ["mkTop", "mkMemory"],
+        "Board": ["mkTop"],
     },
-    data = [
-        ":bram.bin",
-    ],
 )
 
 #genrule(
