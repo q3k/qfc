@@ -4,20 +4,17 @@ load("//build/synthesis:rules.bzl", "rtl_bundle")
 bluespec_library(
     name = "QF100",
     srcs = [
-        "QF100.bsv",
+        "Board.bsv",
     ],
     deps = [
         "//lanai:cpu",
         "//wishbone/peripherals:spi",
         "//wishbone/peripherals:gpio",
+        "//systems/qf100",
     ],
     synthesize = {
-        "QF100": [
+        "Board": [
             "mkQF105",
-            "mkQF100Memory",
-            "mkQF100SPI",
-            "mkQF100GPIO",
-            "mkQF100Fabric",
         ],
     },
     data = [
