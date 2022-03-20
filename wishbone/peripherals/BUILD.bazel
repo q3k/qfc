@@ -43,3 +43,26 @@ bluesim_test(
     ],
     top = "mkTbGPIOController",
 )
+
+bluespec_library(
+    name = "kitchen_sink",
+    srcs = [
+        "WishboneKitchenSink.bsv",
+    ],
+    synthesize = {
+        "WishboneKitchenSink": ["mkTbKitchenSink"],
+    },
+    deps = [
+        "//wishbone",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+bluesim_test(
+    name = "test_kitchen_sink",
+    deps = [
+        ":kitchen_sink",
+    ],
+    top = "mkTbKitchenSink",
+)
+
