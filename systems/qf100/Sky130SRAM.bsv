@@ -40,7 +40,6 @@ interface Sky130SRAM;
     interface Server#(Word, Word) portB;
 endinterface
 
-(* synthesize *)
 module mkSky130SRAM(Sky130SRAM);
     Clock clk <- exposeCurrentClock;
     Reset rst <- exposeCurrentReset;

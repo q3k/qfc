@@ -38,6 +38,9 @@ rtl_bundle(
         "mkQF100KSC": [],
         "mkQF100Fabric": [],
         "mkQF100FlashController": [],
+        "sky130_sram_2kbyte_1rw1r_32x512_8_wrapper": [
+            "sky130_sram_2kbyte_1rw1r_32x512_8",
+        ],
         "mkQF105": [
             "mkLanaiCPU",
             "mkLanaiFrontend",
@@ -46,7 +49,7 @@ rtl_bundle(
             "mkQF100KSC",
             "mkQF100Fabric",
             "mkQF100FlashController",
-            "sky130_sram_2kbyte_1rw1r_32x512_8",
+            "sky130_sram_2kbyte_1rw1r_32x512_8_wrapper",
         ],
         "mkQF100SPIFlashEmulator": [],
     },

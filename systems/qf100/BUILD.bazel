@@ -6,11 +6,6 @@ bluespec_library(
     srcs = [
         "Sky130SRAM.bsv",
     ],
-    synthesize = {
-        "Sky130SRAM": [
-            "mkSky130SRAM",
-        ],
-    },
     deps = [
         "//lanai",
     ],
@@ -32,7 +27,6 @@ bluespec_library(
     ],
     synthesize = {
         "QF100": [
-            "mkQF100",
             "mkQF100BlockRAM",
             "mkQF100SPI",
             "mkQF100GPIO",
