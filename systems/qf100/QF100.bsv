@@ -77,8 +77,8 @@ module mkQF100Fabric(QF100Fabric);
 endmodule
 
 (* synthesize *)
-module mkQF100FlashController(SPIFlashController#(16, 16));
-    SPIFlashController#(16, 16) fmc <- mkSPIFlashController;
+module mkQF100FlashController(SPIFlashController#(8, 4));
+    SPIFlashController#(8, 4) fmc <- mkSPIFlashController;
     return fmc;
 endmodule
 
@@ -104,7 +104,6 @@ interface QF100;
     method Action   gpio_in(Bit#(16) value);
 endinterface
 
-(* synthesize *)
 module mkQF100(QF100);
     LanaiFrontend frontend <- mkLanaiFrontend;
 
@@ -112,7 +111,7 @@ module mkQF100(QF100);
     mkConnection(cpu.imem_client, frontend.core_imem);
     mkConnection(cpu.dmem_client, frontend.core_dmem);
 
-    SPIFlashController#(16, 16) fmc <- mkQF100FlashController;
+    SPIFlashController#(8, 4) fmc <- mkQF100FlashController;
     mkConnection(frontend.fmc_imem, fmc.serverA);
     rule fmcDMemTranslate;
         let req <- frontend.fmc_dmem.request.get();
