@@ -1,0 +1,60 @@
+load("//build/bluespec:rules.bzl", "bluespec_library", "bluesim_test")
+load("//build/synthesis:rules.bzl", "rtl_bundle")
+
+bluespec_library(
+    name = "qf100",
+    srcs = [
+        "QF100.bsv",
+    ],
+    deps = [
+        "//lanai:cpu",
+        "//lanai/frontend",
+        "//lanai/frontend:spi_flash_controller",
+        "//wishbone/peripherals:spi",
+        "//wishbone/peripherals:gpio",
+    ],
+    synthesize = {
+        "QF100": [
+            "mkQF100",
+            "mkQF100Memory",
+            "mkQF100SPI",
+            "mkQF100GPIO",
+            "mkQF100Fabric",
+        ],
+    },
+)
+
+bluespec_library(
+    name = "Tb",
+    srcs = [
+        "SPIFlashEmulator.bsv",
+        "Tb.bsv",
+    ],
+    data = [
+        ":flash.bin",
+    ],
+    deps = [
+        ":qf100",
+    ],
+    synthesize = {
+        "Tb": [
+            "mkTbQF100",
+        ],
+    },
+)
+
+bluesim_test(
+    name = "test_qf100",
+    deps = [
+        ":Tb",
+    ],
+    top = "mkTbQF100",
+)
+
+
+bluespec_library(
+    name = "spi_flash_emulator",
+    srcs = [
+        "SPIFlashEmulator.bsv",
+    ],
+)

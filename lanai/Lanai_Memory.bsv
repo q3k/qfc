@@ -20,10 +20,12 @@ interface Lanai_BlockRAM#(numeric type n);
     interface Lanai_Memory memory;
 endinterface
 
-module mkBlockMemory#(String filename) (Lanai_BlockRAM#(k)) provisos (Log#(k, n));
+module mkBlockMemory#(Maybe#(String) filename) (Lanai_BlockRAM#(k)) provisos (Log#(k, n));
     BRAM_Configure cfg = defaultValue;
     cfg.latency = 1;
-    cfg.loadFormat = tagged Hex filename;
+    if (filename matches tagged Valid .fn) begin
+        cfg.loadFormat = tagged Hex fn;
+    end
     cfg.outFIFODepth = 3;
     cfg.allowWriteResponseBypass = False;
     BRAM2PortBE#(Bit#(n), Bit#(32), 4) bram <- mkBRAM2ServerBE(cfg);
