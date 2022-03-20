@@ -443,6 +443,6 @@ typedef enum {
 
 // Everything below sysmemSplit is routed to imem/dmem. Everything including
 // and above is routed to sysmem/wishbone.
-Word sysmemSplit = 32'h2000_0000;
+Word sysmemSplit = 32'h4000_0000;
 
 endpackage

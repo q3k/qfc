@@ -1,0 +1,39 @@
+load("//build/bluespec:rules.bzl", "bluespec_library", "bluesim_test")
+
+bluespec_library(
+    name = "frontend",
+    srcs = [
+        "LanaiFrontend.bsv",
+    ],
+    synthesize = {
+        #"SPIFlashController": ["mkTbFlashController"],
+    },
+    deps = [
+        "//lanai",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+
+bluespec_library(
+    name = "spi_flash_controller",
+    srcs = [
+        "SPIFlashController.bsv",
+    ],
+    synthesize = {
+        "SPIFlashController": ["mkTbFlashController"],
+    },
+    deps = [
+        "//lanai",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+bluesim_test(
+    name = "test_spi_flash_controller",
+    deps = [
+        ":spi_flash_controller",
+    ],
+    top = "mkTbFlashController",
+)
+

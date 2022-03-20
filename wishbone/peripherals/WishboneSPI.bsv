@@ -225,7 +225,7 @@ module mkSPIController (SPIController#(wbAddr));
             { 1, 0 }: True;
             default: False;
         endcase;
-        if (writeback) begin
+        if (writeback && !dataValid) begin
             data <= shiftregRx;
             if (rbne == 1) begin
                 rxorerr <= 1;
@@ -235,14 +235,14 @@ module mkSPIController (SPIController#(wbAddr));
     endrule
 
     rule startSend (enableMaster && isValid(shiftregTx) && !isValid(sendingBit));
-        $display("Starting SPI send...");
+        //$display("Starting SPI send...");
         sendingBit <= tagged Valid 0;
         clock <= maxClock;
         shiftregRx <= 0;
     endrule
 
     rule stuffTransmit (enableMaster && !isValid(shiftregTx) && dataValid);
-        $display("Queueing SPI send...");
+        //$display("Queueing SPI send of %x...", data);
         shiftregTx <= tagged Valid data;
         dataValid <= False;
     endrule
@@ -276,7 +276,7 @@ module mkSPIController (SPIController#(wbAddr));
     rule wbRequest;
         let r <- bus.client.request.get();
         let resp = SlaveResponse { readData: tagged Invalid };
-        $display("SPI: wb request", fshow(r));
+        //$display("SPI: wb request", fshow(r));
         case (r.address) matches
             0: begin
                 case (r.writeData) matches
@@ -355,6 +355,10 @@ module mkSPIController (SPIController#(wbAddr));
         False: 0;
     endcase;
 
+    let probeData <- mkProbe;
+    let probeDataValid <- mkProbe;
+    let probeShiftregTx <- mkProbe;
+
     let probeSclk <- mkProbe;
     let probeMosi <- mkProbe;
     let probeMosiOe <- mkProbe;
@@ -364,6 +368,10 @@ module mkSPIController (SPIController#(wbAddr));
     let probeRxorerr <- mkProbe;
     let probeTrans <- mkProbe;
     rule setProbes;
+        probeData <= data;
+        probeDataValid <= dataValid;
+        probeShiftregTx <= shiftregTx;
+
         probeSclk <= sclk;
         probeMosi <= mosi;
         probeMosiOe <= mosiOe;
